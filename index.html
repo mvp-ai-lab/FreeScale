@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>FreeScale: Scaling 3D scenes via Certainty-Aware Free-View Generation | CVPR 2026</title>
+    <!-- Favicon / Logo for browser tab -->
+    <link rel="icon" type="image/jpeg" sizes="32x32" href="./images/logo.jpg">
+    <link rel="icon" type="image/jpeg" sizes="16x16" href="./images/logo.jpg">
+    <link rel="apple-touch-icon" href="./images/logo.jpg">
+    <!-- Font Awesome 6 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="./css/style.css">
+    <!-- Google Fonts: Inter -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="#" class="navbar-logo">
+                <img src="./images/logo.jpg" alt="FreeScale Logo"
+                    style="height: 32px; width: auto; border-radius: 8px;">
+                <span>FreeScale</span>
+            </a>
+            <div class="navbar-toggle" id="mobileToggle"><i class="fas fa-bars"></i></div>
+            <div class="navbar-menu" id="navbarMenu">
+                <a href="#abstract" class="navbar-link"><i class="fas fa-book-open"></i> Abstract</a>
+                <a href="#method" class="navbar-link"><i class="fas fa-cubes"></i> Method</a>
+                <a href="#demos" class="navbar-link"><i class="fas fa-video"></i> Demos</a>
+                <a href="#results" class="navbar-link"><i class="fas fa-chart-line"></i> Results</a>
+                <a href="#resources" class="navbar-link"><i class="fas fa-download"></i> Resources</a>
+                <div class="theme-switch-wrapper">
+                    <div class="theme-switch">
+                        <input type="checkbox" id="theme-toggle">
+                        <label for="theme-toggle"><i class="fas fa-sun"></i><i class="fas fa-moon"></i></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="navbar-overlay" id="overlay"></div>
+    <div class="back-to-top" id="backToTop"><a href="#" class="back-to-top-btn"><i class="fas fa-arrow-up"></i></a>
+    </div>
+
+    <div class="main-container">
+        <!-- Title & Authors with Logo on the first row only (left of "FreeScale: Scaling 3D scenes via") -->
+        <section class="glass-card">
+            <div style="text-align: center;">
+                <span class="badge-venue"><i class="fas fa-award"></i> CVPR 2026 </span>
+                <!-- Title with logo on first row, no borders/radius/shadows -->
+                <div style="margin: 0.5rem 0 0.2rem;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <img src="./images/logo.jpg" alt="FreeScale Logo"
+                            style="height: 65px; width: auto; border: none; border-radius: 0; box-shadow: none; background: transparent;">
+                        <h1
+                            style="font-size: 3.2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin: 0; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; display: inline-block;">
+                            FreeScale: Scaling 3D scenes via
+                        </h1>
+                    </div>
+                    <h1
+                        style="font-size: 3.2rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin: 0.2rem 0 0; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                        Certainty-Aware Free-View Generation
+                    </h1>
+                </div>
+                <!-- Author List with larger font -->
+                <div class="author-block">
+                    <div class="author">Chenhan Jiang<sup>1*†</sup>
+                        <div class="affiliation">HKUST</div>
+                    </div>
+                    <div class="author">Yu Chen<sup>2*</sup>
+                        <div class="affiliation">NUS</div>
+                    </div>
+                    <div class="author">Qingwen Zhang<sup>3</sup>
+                        <div class="affiliation">KTH</div>
+                    </div>
+                    <div class="author">Jifei Song<sup>4</sup>
+                        <div class="affiliation">Univ. of Surrey</div>
+                    </div>
+                    <div class="author">Songcen Xu<sup>5</sup>
+                        <div class="affiliation">Independent Researcher</div>
+                    </div>
+                    <div class="author">Dit-Yan Yeung<sup>1</sup>
+                        <div class="affiliation">HKUST</div>
+                    </div>
+                    <div class="author">Jiankang Deng<sup>6†</sup>
+                        <div class="affiliation">Imperial College London</div>
+                    </div>
+                </div>
+                <div class="corresponding">* Equal contribution &nbsp;|&nbsp; † Corresponding: jchcyan@gmail.com,
+                    j.deng16@imperial.ac.uk</div>
+                <div class="button-group">
+                    <a href="#" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Paper (arXiv)</a>
+                    <a href="https://github.com/mvp-ai-lab/FreeScale" class="btn btn-outline"><i
+                            class="fab fa-github"></i> Code</a>
+                    <a href="#" class="btn btn-outline"><i class="fas fa-database"></i> Dataset</a>
+                    <a href="#" class="btn btn-outline"><i class="fas fa-video"></i> Video</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Teaser Figure -->
+        <section class="glass-card">
+            <div class="section-header">
+                <div class="icon-wrapper"><i class="fas fa-chalkboard-user"></i></div>
+                <h3>Overview</h3>
+            </div>
+            <img class="teaser-img" src="./images/teaser.png" alt="FreeScale teaser">
+            <p style="margin-top: 0.5rem; font-size: 0.9rem; text-align: center; color: var(--text-secondary);">
+                <strong>FreeScale</strong> leverages reconstructed scene geometry to generate high-fidelity free-view
+                images with accurate poses. Training feed-forward models (e.g., LVSM) with 22% additional generated
+                views significantly boosts generalization to large camera motion (PSNR 18.75 → 21.45).
+            </p>
+        </section>
+
+        <!-- Abstract -->
+        <section class="glass-card" id="abstract">
+            <div class="section-header">
+                <div class="icon-wrapper"><i class="fas fa-align-left"></i></div>
+                <h3>Abstract</h3>
+            </div>
+            <div class="abstract-text">
+                <p>The development of generalizable Novel View Synthesis (NVS) models is critically limited by the
+                    scarcity of large-scale training data featuring diverse and precise camera trajectories. While
+                    real-world captures are photorealistic, they are typically sparse and discrete. Conversely,
+                    synthetic data scales but suffers from a domain gap and often lacks realistic semantics. We
+                    introduce <strong>FreeScale</strong>, a novel framework that leverages the power of scene
+                    reconstruction to transform limited real-world image sequences into a scalable source of
+                    high-quality training data. Our key insight is that an imperfect reconstructed scene serves as a
+                    rich geometric proxy, but naively sampling from it amplifies artifacts. To this end, we propose a
+                    certainty-aware free-view sampling strategy identifying novel viewpoints that are both semantically
+                    meaningful and minimally affected by reconstruction errors. We demonstrate FreeScale's effectiveness
+                    by scaling up the training of feedforward NVS models, achieving a notable gain of 2.6 dB in PSNR on
+                    challenging out-of-distribution benchmarks. Furthermore, we show that the generated data can
+                    actively enhance per-scene 3D Gaussian Splatting optimization, leading to consistent improvements
+                    across multiple datasets. Our work provides a practical and powerful data generation engine to
+                    overcome a fundamental bottleneck in 3D vision.</p>
+            </div>
+        </section>
+
+        <!-- Method highlights -->
+        <section class="glass-card" id="method">
+            <div class="section-header">
+                <div class="icon-wrapper"><i class="fas fa-cogs"></i></div>
+                <h3>Method: Certainty-Aware View Generation</h3>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+                <div style="flex: 1.2;"><img
+                        src="https://placehold.co/600x400/2d2d3a/white?text=Certainty+Grid+%26+View+Graph"
+                        style="width:100%; border-radius: 20px; border: 1px solid var(--glass-border);"></div>
+                <div style="flex: 1;">
+                    <ul style="list-style: none;">
+                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-check-circle"
+                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>Certainty Grid</strong>
+                            – models geometric uncertainty from sparse inputs.</li>
+                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-check-circle"
+                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>View Graph</strong> –
+                            establishes correspondences between generated and real views.</li>
+                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-check-circle"
+                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>Active
+                                Exploration</strong> – selects high-information, low-artifact viewpoints.</li>
+                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-chart-line"
+                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>Scaling Effect</strong>
+                            – 1.22× training data expansion, +2.6 dB PSNR gain.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo Carousel (horizontal scroll) -->
+        <section class="glass-card" id="demos">
+            <div class="section-header">
+                <div class="icon-wrapper"><i class="fas fa-play-circle"></i></div>
+                <h3>Demo: Free-View Rendering Results</h3>
+            </div>
+            <div class="demo-carousel">
+                <button class="carousel-btn left" id="carouselLeft"><i class="fas fa-chevron-left"></i></button>
+                <div class="carousel-container" id="carouselContainer">
+                    <div class="demo-card">
+                        <div class="demo-video"><i class="fas fa-video" style="font-size: 2rem;"></i></div>
+                        <div class="demo-caption">DL3DV: enhanced view with FreeScale</div>
+                    </div>
+                    <div class="demo-card">
+                        <div class="demo-video"><i class="fas fa-camera" style="font-size: 2rem;"></i></div>
+                        <div class="demo-caption">Large camera motion – artifact-free</div>
+                    </div>
+                    <div class="demo-card">
+                        <div class="demo-video"><i class="fas fa-cubes" style="font-size: 2rem;"></i></div>
+                        <div class="demo-caption">Tanks&Temples: certainty-guided sampling</div>
+                    </div>
+                    <div class="demo-card">
+                        <div class="demo-video"><i class="fas fa-chart-line" style="font-size: 2rem;"></i></div>
+                        <div class="demo-caption">MipNeRF360: improved geometry</div>
+                    </div>
+                    <div class="demo-card">
+                        <div class="demo-video"><i class="fas fa-eye" style="font-size: 2rem;"></i></div>
+                        <div class="demo-caption">Nerfbusters: detail preservation</div>
+                    </div>
+                </div>
+                <button class="carousel-btn right" id="carouselRight"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <p style="margin-top: 0.8rem; text-align: center; font-size: 0.85rem;"><i
+                    class="fas fa-arrows-left-right"></i> Drag or use buttons to explore more demos.</p>
+        </section>
+
+        <!-- Quantitative Results (Tables from paper) -->
+        <section class="glass-card" id="results">
+            <div class="section-header">
+                <div class="icon-wrapper"><i class="fas fa-chart-line"></i></div>
+                <h3>Quantitative Results</h3>
+            </div>
+            <h4 style="margin: 0.5rem 0 0.2rem; font-size: 1.1rem;">Feed-forward models on viewpoint generalization</h4>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th rowspan="2">Method</th>
+                            <th colspan="3">In-Domain (DL3DV)</th>
+                            <th colspan="3">MipNeRF360</th>
+                            <th colspan="3">Tanks & Temples</th>
+                        </tr>
+                        <tr>
+                            <th>PSNR↑</th>
+                            <th>SSIM↑</th>
+                            <th>LPIPS↓</th>
+                            <th>PSNR↑</th>
+                            <th>SSIM↑</th>
+                            <th>LPIPS↓</th>
+                            <th>PSNR↑</th>
+                            <th>SSIM↑</th>
+                            <th>LPIPS↓</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="10"><strong><i>Small camera motion</i></strong></td>
+                        </tr>
+                        <tr>
+                            <td>LVSM</td>
+                            <td>22.20</td>
+                            <td>0.680</td>
+                            <td>0.216</td>
+                            <td>15.84</td>
+                            <td>0.285</td>
+                            <td>0.583</td>
+                            <td>13.07</td>
+                            <td>0.336</td>
+                            <td>0.674</td>
+                        </tr>
+                        <tr style="background:var(--hover-bg);">
+                            <td><strong>LVSM w/ FreeScale</strong></td>
+                            <td><strong>24.20</strong></td>
+                            <td><strong>0.767</strong></td>
+                            <td><strong>0.165</strong></td>
+                            <td><strong>18.30</strong></td>
+                            <td><strong>0.386</strong></td>
+                            <td><strong>0.460</strong></td>
+                            <td><strong>13.80</strong></td>
+                            <td><strong>0.652</strong></td>
+                            <td><strong>0.361</strong></td>
+                        </tr>
+                        <tr>
+                            <td colspan="10"><strong><i>Large camera motion</i></strong></td>
+                        </tr>
+                        <tr>
+                            <td>3DGS</td>
+                            <td>16.22</td>
+                            <td>0.592</td>
+                            <td>0.345</td>
+                            <td>13.47</td>
+                            <td>0.334</td>
+                            <td>0.529</td>
+                            <td>12.12</td>
+                            <td>0.351</td>
+                            <td>0.569</td>
+                        </tr>
+                        <tr>
+                            <td>LVSM</td>
+                            <td>18.75</td>
+                            <td>0.522</td>
+                            <td>0.352</td>
+                            <td>13.88</td>
+                            <td>0.293</td>
+                            <td>0.622</td>
+                            <td>13.89</td>
+                            <td>0.352</td>
+                            <td>0.650</td>
+                        </tr>
+                        <tr style="background:var(--hover-bg);">
+                            <td><strong>LVSM w/ FreeScale</strong></td>
+                            <td><strong>21.45</strong></td>
+                            <td><strong>0.661</strong></td>
+                            <td><strong>0.247</strong></td>
+                            <td><strong>17.27</strong></td>
+                            <td><strong>0.432</strong></td>
+                            <td><strong>0.398</strong></td>
+                            <td><strong>14.67</strong></td>
+                            <td><strong>0.391</strong></td>
+                            <td>0.609</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="table-caption">Joint training with FreeScale data yields consistent improvements across
+                    small and large camera motion settings.</div>
+            </div>
+
+            <h4 style="margin: 1.5rem 0 0.5rem; font-size: 1.1rem;">Per-scene reconstruction (3DGS enhancement)</h4>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th colspan="4">DL3DV</th>
+                            <th colspan="3">Nerfbuster</th>
+                            <th colspan="3">Tanks & Temples</th>
+                        </tr>
+                        <tr>
+                            <th></th>
+                            <th>PSNR↑</th>
+                            <th>SSIM↑</th>
+                            <th>LPIPS↓</th>
+                            <th>Time↓</th>
+                            <th>PSNR↑</th>
+                            <th>SSIM↑</th>
+                            <th>LPIPS↓</th>
+                            <th>PSNR↑</th>
+                            <th>SSIM↑</th>
+                            <th>LPIPS↓</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Nerfbusters</td>
+                            <td>17.45</td>
+                            <td>0.606</td>
+                            <td>0.370</td>
+                            <td>-</td>
+                            <td>17.72</td>
+                            <td>0.647</td>
+                            <td>0.352</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>-</td>
+                        </tr>
+                        <tr>
+                            <td>DIFIX3D+</td>
+                            <td>17.99</td>
+                            <td>0.601</td>
+                            <td>0.293</td>
+                            <td>81.40</td>
+                            <td>18.07</td>
+                            <td>0.642</td>
+                            <td>0.279</td>
+                            <td>18.59</td>
+                            <td>0.623</td>
+                            <td>0.317</td>
+                        </tr>
+                        <tr>
+                            <td>3DGS</td>
+                            <td>19.18</td>
+                            <td>0.714</td>
+                            <td>0.233</td>
+                            <td>35.19</td>
+                            <td>18.14</td>
+                            <td>0.643</td>
+                            <td>0.265</td>
+                            <td>20.37</td>
+                            <td>0.680</td>
+                            <td>0.253</td>
+                        </tr>
+                        <tr>
+                            <td>3DGS w/ DIFIX3D</td>
+                            <td>19.12</td>
+                            <td>0.680</td>
+                            <td>0.211</td>
+                            <td>39.75</td>
+                            <td>17.69</td>
+                            <td>0.606</td>
+                            <td>0.264</td>
+                            <td>19.75</td>
+                            <td>0.630</td>
+                            <td>0.210</td>
+                        </tr>
+                        <tr style="background:var(--hover-bg);">
+                            <td><strong>3DGS w/ FreeScale</strong></td>
+                            <td><strong>19.57</strong></td>
+                            <td><strong>0.723</strong></td>
+                            <td>0.219</td>
+                            <td>37.22</td>
+                            <td><strong>18.40</strong></td>
+                            <td><strong>0.648</strong></td>
+                            <td><strong>0.258</strong></td>
+                            <td><strong>20.66</strong></td>
+                            <td><strong>0.685</strong></td>
+                            <td>0.251</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="table-caption">FreeScale improves per-scene 3DGS optimization across datasets without
+                    significant overhead.</div>
+            </div>
+        </section>
+
+        <!-- Resources & Citation -->
+        <section class="glass-card" id="resources">
+            <div class="section-header">
+                <div class="icon-wrapper"><i class="fas fa-folder-open"></i></div>
+                <h3>Resources & Citation</h3>
+            </div>
+            <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                <div style="flex:1">
+                    <h4><i class="fas fa-code"></i> Code & Models</h4>
+                    <p><a href="https://github.com/mvp-ai-lab/FreeScale" class="btn-outline"
+                            style="display:inline-block; margin-top:0.5rem; padding: 0.4rem 1rem; border-radius: 40px; text-decoration: none; border: 1px solid var(--glass-border);"><i
+                                class="fab fa-github"></i> GitHub Repository</a></p>
+                    <p><a href="#" class="btn-outline"
+                            style="display:inline-block; margin-top:0.5rem; padding: 0.4rem 1rem; border-radius: 40px; text-decoration: none; border: 1px solid var(--glass-border);"><i
+                                class="fas fa-cloud"></i> HuggingFace Demo</a></p>
+                </div>
+                <div style="flex:2">
+                    <h4><i class="fas fa-quote-right"></i> BibTeX</h4>
+                    <pre>@inproceedings{jiang2026freescale,
+  title={FreeScale: Scaling 3D scenes via Certainty-Aware Free-View Generation},
+  author={Jiang, Chenhan and Chen, Yu and Zhang, Qingwen and Song, Jifei and Xu, Songcen and Yeung, Dit-Yan and Deng, Jiankang},
+  booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  year={2026}
+}</pre>
+                </div>
+            </div>
+        </section>
+
+        <footer class="footer">© 2026 FreeScale Authors. <i class="fas fa-camera"></i> CVPR 2026 | <img
+                src="./images/logo.jpg" alt="logo"
+                style="height: 16px; width: auto; vertical-align: middle; border: none; border-radius: 0; box-shadow: none;">
+            FreeScale Project</footer>
+    </div>
+
+    <script>
+        // Theme
+        const toggle = document.getElementById('theme-toggle');
+        if (localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            if (toggle) toggle.checked = true;
+        }
+        toggle?.addEventListener('change', () => {
+            if (toggle.checked) { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('theme', 'dark'); }
+            else { document.documentElement.setAttribute('data-theme', 'light'); localStorage.setItem('theme', 'light'); }
+        });
+        // Mobile menu
+        const mobileBtn = document.getElementById('mobileToggle');
+        const menu = document.getElementById('navbarMenu');
+        const overlay = document.getElementById('overlay');
+        function closeMenu() { menu?.classList.remove('active'); overlay?.classList.remove('active'); }
+        function openMenu() { menu?.classList.add('active'); overlay?.classList.add('active'); }
+        mobileBtn?.addEventListener('click', (e) => { e.stopPropagation(); menu?.classList.contains('active') ? closeMenu() : openMenu(); });
+        overlay?.addEventListener('click', closeMenu);
+        document.querySelectorAll('.navbar-link').forEach(l => l.addEventListener('click', closeMenu));
+        // Back to top
+        const backBtn = document.getElementById('backToTop');
+        window.addEventListener('scroll', () => { window.scrollY > 300 ? backBtn?.classList.add('show') : backBtn?.classList.remove('show'); });
+        backBtn?.addEventListener('click', (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+        // Carousel
+        const container = document.getElementById('carouselContainer');
+        const leftBtn = document.getElementById('carouselLeft');
+        const rightBtn = document.getElementById('carouselRight');
+        if (container) {
+            const scrollAmount = () => Math.min(360, container.clientWidth * 0.8);
+            leftBtn?.addEventListener('click', () => { container.scrollBy({ left: -scrollAmount(), behavior: 'smooth' }); });
+            rightBtn?.addEventListener('click', () => { container.scrollBy({ left: scrollAmount(), behavior: 'smooth' }); });
+        }
+    </script>
+</body>
+
+</html>
