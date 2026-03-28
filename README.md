@@ -1,9 +1,12 @@
 # FreeScale
 The official implementation of our CVPR 2026 paper: "FreeScale: Scaling 3D Scenes via Certainty-Aware Free-View Generation"
 
-[Project Page](https://mvp-ai-lab.github.io/FreeScale)
+[[🌐 Project Page](https://mvp-ai-lab.github.io/FreeScale) | [arXiv](./files/FreeScale_CVPR26.pdf)] (**CVPR 2026**)
 
-## Citation
+
+## ✏️ Cite
+
+If you find this project useful for your research, please consider citing our paper:
 
 ```bibtex
 @inproceedings{jiang2026freescale,
