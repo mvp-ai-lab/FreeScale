@@ -171,40 +171,119 @@
             </div>
         </section>
 
-        <!-- Demo Carousel (horizontal scroll) -->
+        <!-- Demo comparison viewer -->
         <section class="glass-card" id="demos">
             <div class="section-header">
                 <div class="icon-wrapper"><i class="fas fa-play-circle"></i></div>
                 <h3>Demo: Free-View Rendering Results</h3>
             </div>
-            <div class="demo-carousel">
-                <button class="carousel-btn left" id="carouselLeft"><i class="fas fa-chevron-left"></i></button>
-                <div class="carousel-container" id="carouselContainer">
-                    <div class="demo-card">
-                        <div class="demo-video"><i class="fas fa-video" style="font-size: 2rem;"></i></div>
-                        <div class="demo-caption">DL3DV: enhanced view with FreeScale</div>
-                    </div>
-                    <div class="demo-card">
-                        <div class="demo-video"><i class="fas fa-camera" style="font-size: 2rem;"></i></div>
-                        <div class="demo-caption">Large camera motion – artifact-free</div>
-                    </div>
-                    <div class="demo-card">
-                        <div class="demo-video"><i class="fas fa-cubes" style="font-size: 2rem;"></i></div>
-                        <div class="demo-caption">Tanks&Temples: certainty-guided sampling</div>
-                    </div>
-                    <div class="demo-card">
-                        <div class="demo-video"><i class="fas fa-chart-line" style="font-size: 2rem;"></i></div>
-                        <div class="demo-caption">MipNeRF360: improved geometry</div>
-                    </div>
-                    <div class="demo-card">
-                        <div class="demo-video"><i class="fas fa-eye" style="font-size: 2rem;"></i></div>
-                        <div class="demo-caption">Nerfbusters: detail preservation</div>
-                    </div>
+            <div class="demo-intro">
+                <p>
+                    We compare <strong>FreeScale</strong> against <strong>3D Gaussian Splatting (3DGS)</strong> and
+                    <strong>Difix3D+</strong> on scenes from
+                    <a href="https://dl3dv-10k.github.io/DL3DV-10K/" target="_blank" rel="noopener noreferrer">DL3DV-10K</a>
+                    and
+                    <a href="https://ethanweber.me/nerfbusters/" target="_blank" rel="noopener noreferrer">Nerfbusters</a>.
+                    Each clip below uses the same scene and playback controls for side-by-side free-view comparison.
+                </p>
+                <div class="demo-links">
+                    <a href="https://github.com/graphdeco-inria/gaussian-splatting" target="_blank"
+                        rel="noopener noreferrer" class="demo-link-pill"><i class="fab fa-github"></i> 3DGS</a>
+                    <a href="https://research.nvidia.com/labs/toronto-ai/difix3d/" target="_blank"
+                        rel="noopener noreferrer" class="demo-link-pill"><i class="fas fa-external-link-alt"></i>
+                        Difix3D+</a>
                 </div>
-                <button class="carousel-btn right" id="carouselRight"><i class="fas fa-chevron-right"></i></button>
             </div>
-            <p style="margin-top: 0.8rem; text-align: center; font-size: 0.85rem;"><i
-                    class="fas fa-arrows-left-right"></i> Drag or use buttons to explore more demos.</p>
+            <div class="demo-toolbar">
+                <div class="dataset-tabs" id="datasetTabs"></div>
+            </div>
+            <div class="comparison-meta">
+                <div>
+                    <span class="comparison-label">Dataset</span>
+                    <strong id="activeDatasetName">DL3DV-10K</strong>
+                </div>
+                <div>
+                    <span class="comparison-label">Scene</span>
+                    <strong id="activeSceneName">dl3dv_0a1b7</strong>
+                </div>
+                <div>
+                    <span class="comparison-label">Coverage</span>
+                    <strong id="activeSceneCount">19 matched scenes</strong>
+                </div>
+            </div>
+            <div class="comparison-actions">
+                <div class="comparison-actions-copy">
+                    <strong>Interactive slider comparison</strong>
+                    <span>Drag the handle horizontally to reveal FreeScale on the right and baseline renderings on the left.</span>
+                </div>
+                <div class="comparison-tools">
+                    <button type="button" class="magnifier-toggle" id="magnifierToggle" aria-pressed="false">
+                        <i class="fas fa-magnifying-glass"></i> Magnifier: Off
+                    </button>
+                    <span class="magnifier-hint"><i class="fas fa-circle-info"></i> Enable magnifier to inspect fine details.</span>
+                </div>
+            </div>
+            <div class="comparison-method-tabs" id="comparisonMethodTabs">
+                <button type="button" class="comparison-method-tab active" data-panel="panel-3dgs">3DGS vs FreeScale</button>
+                <button type="button" class="comparison-method-tab" data-panel="panel-difix">Difix3D+ vs FreeScale</button>
+            </div>
+            <div class="comparison-showcase" id="comparisonGrid">
+                <div class="scene-chip-indicator">
+                    <div class="scene-chips" id="sceneChips"></div>
+                </div>
+                <button class="carousel-btn carousel-btn-overlay carousel-btn-left" id="scenePrev" type="button"
+                    aria-label="Previous scene"><i class="fas fa-chevron-left"></i></button>
+                <button class="carousel-btn carousel-btn-overlay carousel-btn-right" id="sceneNext" type="button"
+                    aria-label="Next scene"><i class="fas fa-chevron-right"></i></button>
+                <article class="slider-card comparison-panel active" id="panel-3dgs">
+                    <div class="comparison-card-head">
+                        <div class="comparison-title">
+                            <span class="method-badge method-3dgs">3DGS</span>
+                            <span>Baseline to FreeScale</span>
+                        </div>
+                        <span class="comparison-side-label">Left: 3DGS | Right: FreeScale</span>
+                    </div>
+                    <div class="slider-stage" id="stage-3dgs" data-orientation="landscape">
+                        <div class="stage-media-frame">
+                            <video id="video-3dgs" class="stage-video stage-video-base" autoplay loop muted playsinline preload="auto"></video>
+                            <div class="stage-overlay" id="overlay-3dgs">
+                                <video id="video-ours-vs-3dgs" class="stage-video stage-video-overlay" autoplay loop muted playsinline preload="auto"></video>
+                            </div>
+                            <canvas class="magnifier-lens" id="lens-3dgs" width="220" height="220" aria-hidden="true"></canvas>
+                            <div class="stage-divider" id="divider-3dgs" style="left: 50%;">
+                                <span class="stage-handle"><i class="fas fa-arrows-left-right"></i></span>
+                            </div>
+                        </div>
+                        <input id="slider-3dgs" class="comparison-range" type="range" min="0" max="100" value="50"
+                            aria-label="Compare 3DGS and FreeScale">
+                    </div>
+                </article>
+                <article class="slider-card comparison-panel" id="panel-difix">
+                    <div class="comparison-card-head">
+                        <div class="comparison-title">
+                            <span class="method-badge method-difix3d">Difix3D+</span>
+                            <span>Baseline to FreeScale</span>
+                        </div>
+                        <span class="comparison-side-label">Left: Difix3D+ | Right: FreeScale</span>
+                    </div>
+                    <div class="slider-stage" id="stage-difix" data-orientation="landscape">
+                        <div class="stage-media-frame">
+                            <video id="video-difix3d" class="stage-video stage-video-base" autoplay loop muted playsinline preload="auto"></video>
+                            <div class="stage-overlay" id="overlay-difix">
+                                <video id="video-ours-vs-difix" class="stage-video stage-video-overlay" autoplay loop muted playsinline preload="auto"></video>
+                            </div>
+                            <canvas class="magnifier-lens" id="lens-difix" width="220" height="220" aria-hidden="true"></canvas>
+                            <div class="stage-divider" id="divider-difix" style="left: 50%;">
+                                <span class="stage-handle"><i class="fas fa-arrows-left-right"></i></span>
+                            </div>
+                        </div>
+                        <input id="slider-difix" class="comparison-range" type="range" min="0" max="100" value="50"
+                            aria-label="Compare Difix3D+ and FreeScale">
+                    </div>
+                </article>
+            </div>
+            <p class="demo-footnote"><i class="fas fa-arrows-left-right"></i> Videos keep their native portrait or
+                landscape framing automatically, and both comparison sliders stay synchronized to the same scene.</p>
         </section>
 
         <!-- Quantitative Results (Tables from paper) -->
@@ -463,15 +542,400 @@
         const backBtn = document.getElementById('backToTop');
         window.addEventListener('scroll', () => { window.scrollY > 300 ? backBtn?.classList.add('show') : backBtn?.classList.remove('show'); });
         backBtn?.addEventListener('click', (e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-        // Carousel
-        const container = document.getElementById('carouselContainer');
-        const leftBtn = document.getElementById('carouselLeft');
-        const rightBtn = document.getElementById('carouselRight');
-        if (container) {
-            const scrollAmount = () => Math.min(360, container.clientWidth * 0.8);
-            leftBtn?.addEventListener('click', () => { container.scrollBy({ left: -scrollAmount(), behavior: 'smooth' }); });
-            rightBtn?.addEventListener('click', () => { container.scrollBy({ left: scrollAmount(), behavior: 'smooth' }); });
+        // Demo comparison viewer
+        const demoData = {
+            dl3dv10k: {
+                label: 'DL3DV-10K',
+                scenes: [
+                    { id: 'dl3dv_0a1b7', label: 'dl3dv_0a1b7', ours: './videos/ours/dl3dv10k/dl3dv_0a1b7_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_0a1b7_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_0a1b7_difix3d.mp4' },
+                    { id: 'dl3dv_23855', label: 'dl3dv_23855', ours: './videos/ours/dl3dv10k/dl3dv_23855_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_23855_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_23855_difix3d.mp4' },
+                    { id: 'dl3dv_26fd2', label: 'dl3dv_26fd2', ours: './videos/ours/dl3dv10k/dl3dv_26fd2_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_26fd2_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_26fd2_difix3d.mp4' },
+                    { id: 'dl3dv_2cbfe', label: 'dl3dv_2cbfe', ours: './videos/ours/dl3dv10k/dl3dv_2cbfe_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_2cbfe_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_2cbfe_difix3d.mp4' },
+                    { id: 'dl3dv_341b4', label: 'dl3dv_341b4', ours: './videos/ours/dl3dv10k/dl3dv_341b4_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_341b4_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_341b4_difix3d.mp4' },
+                    { id: 'dl3dv_35872', label: 'dl3dv_35872', ours: './videos/ours/dl3dv10k/dl3dv_35872_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_35872_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_35872_difix3d.mp4' },
+                    { id: 'dl3dv_3bb89', label: 'dl3dv_3bb89', ours: './videos/ours/dl3dv10k/dl3dv_3bb89_act.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_3bb89_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_3bb89_difix3d.mp4' },
+                    { id: 'dl3dv_4ff86', label: 'dl3dv_4ff86', ours: './videos/ours/dl3dv10k/dl3dv_4ff86_act.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_4ff86_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_4ff86_difix3d.mp4' },
+                    { id: 'dl3dv_513e4', label: 'dl3dv_513e4', ours: './videos/ours/dl3dv10k/dl3dv_513e4_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_513e4_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_513e4_difix3d.mp4' },
+                    { id: 'dl3dv_56555', label: 'dl3dv_56555', ours: './videos/ours/dl3dv10k/dl3dv_56555_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_56555_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_56555_difix3d.mp4' },
+                    { id: 'dl3dv_599ca', label: 'dl3dv_599ca', ours: './videos/ours/dl3dv10k/dl3dv_599ca_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_599ca_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_599ca_difix3d.mp4' },
+                    { id: 'dl3dv_5a27c', label: 'dl3dv_5a27c', ours: './videos/ours/dl3dv10k/dl3dv_5a27c_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_5a27c_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_5a27c_difix3d.mp4' },
+                    { id: 'dl3dv_5f004', label: 'dl3dv_5f004', ours: './videos/ours/dl3dv10k/dl3dv_5f004_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_5f004_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_5f004_difix3d.mp4' },
+                    { id: 'dl3dv_669c3', label: 'dl3dv_669c3', ours: './videos/ours/dl3dv10k/dl3dv_669c3_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_669c3_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_669c3_difix3d.mp4' },
+                    { id: 'dl3dv_70eac', label: 'dl3dv_70eac', ours: './videos/ours/dl3dv10k/dl3dv_70eac_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_70eac_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_70eac_difix3d.mp4' },
+                    { id: 'dl3dv_75fbb', label: 'dl3dv_75fbb', ours: './videos/ours/dl3dv10k/dl3dv_75fbb_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_75fbb_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_75fbb_difix3d.mp4' },
+                    { id: 'dl3dv_7a9f9', label: 'dl3dv_7a9f9', ours: './videos/ours/dl3dv10k/dl3dv_7a9f9_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_7a9f9_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_7a9f9_difix3d.mp4' },
+                    { id: 'dl3dv_9c8c0', label: 'dl3dv_9c8c0', ours: './videos/ours/dl3dv10k/dl3dv_9c8c0_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_9c8c0_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_9c8c0_difix3d.mp4' },
+                    { id: 'dl3dv_9fb05', label: 'dl3dv_9fb05', ours: './videos/ours/dl3dv10k/dl3dv_9fb05_ours.mp4', gs: './videos/3dgs/dl3dv10k/dl3dv_9fb05_3dgs.mp4', difix: './videos/difix3d/dl3dv10k/dl3dv_9fb05_difix3d.mp4' }
+                ]
+            },
+            nerfbuster: {
+                label: 'Nerfbusters',
+                scenes: [
+                    { id: 'aloe', label: 'aloe', ours: './videos/ours/nerfbuster/aloe_ours.mp4', gs: './videos/3dgs/nerfbuster/aloe_3dgs.mp4', difix: './videos/difix3d/nerfbuster/aloe_difix3d.mp4' },
+                    { id: 'art', label: 'art', ours: './videos/ours/nerfbuster/art_ours.mp4', gs: './videos/3dgs/nerfbuster/art_3dgs.mp4', difix: './videos/difix3d/nerfbuster/art_difix3d.mp4' },
+                    { id: 'car', label: 'car', ours: './videos/ours/nerfbuster/car_ours.mp4', gs: './videos/3dgs/nerfbuster/car_3dgs.mp4', difix: './videos/difix3d/nerfbuster/car_difix3d.mp4' },
+                    { id: 'century', label: 'century', ours: './videos/ours/nerfbuster/century_ours.mp4', gs: './videos/3dgs/nerfbuster/century_3dgs.mp4', difix: './videos/difix3d/nerfbuster/century_difix3d.mp4' },
+                    { id: 'flowers', label: 'flowers', ours: './videos/ours/nerfbuster/flowers_ours.mp4', gs: './videos/3dgs/nerfbuster/flowers_3dgs.mp4', difix: './videos/difix3d/nerfbuster/flowers_difix3d.mp4' },
+                    { id: 'garbage', label: 'garbage', ours: './videos/ours/nerfbuster/garbage_ours.mp4', gs: './videos/3dgs/nerfbuster/garbage_3dgs.mp4', difix: './videos/difix3d/nerfbuster/garbage_difix3d.mp4' },
+                    { id: 'picnic', label: 'picnic', ours: './videos/ours/nerfbuster/picnic_ours.mp4', gs: './videos/3dgs/nerfbuster/picnic_3dgs.mp4', difix: './videos/difix3d/nerfbuster/picnic_difix3d.mp4' },
+                    { id: 'pikachu', label: 'pikachu', ours: './videos/ours/nerfbuster/pikachu_ours.mp4', gs: './videos/3dgs/nerfbuster/pikachu_3dgs.mp4', difix: './videos/difix3d/nerfbuster/pikachu_difix3d.mp4' },
+                    { id: 'pipe', label: 'pipe', ours: './videos/ours/nerfbuster/pipe_ours.mp4', gs: './videos/3dgs/nerfbuster/pipe_3dgs.mp4', difix: './videos/difix3d/nerfbuster/pipe_difix3d.mp4' },
+                    { id: 'plant', label: 'plant', ours: './videos/ours/nerfbuster/plant_ours.mp4', gs: './videos/3dgs/nerfbuster/plant_3dgs.mp4', difix: './videos/difix3d/nerfbuster/plant_difix3d.mp4' }
+                ]
+            }
+        };
+        const datasetTabs = document.getElementById('datasetTabs');
+        const sceneChips = document.getElementById('sceneChips');
+        const scenePrev = document.getElementById('scenePrev');
+        const sceneNext = document.getElementById('sceneNext');
+        const activeDatasetName = document.getElementById('activeDatasetName');
+        const activeSceneName = document.getElementById('activeSceneName');
+        const activeSceneCount = document.getElementById('activeSceneCount');
+        const stage3DGS = document.getElementById('stage-3dgs');
+        const stageDifix = document.getElementById('stage-difix');
+        const video3DGS = document.getElementById('video-3dgs');
+        const videoDifix = document.getElementById('video-difix3d');
+        const videoOursVs3DGS = document.getElementById('video-ours-vs-3dgs');
+        const videoOursVsDifix = document.getElementById('video-ours-vs-difix');
+        const overlay3DGS = document.getElementById('overlay-3dgs');
+        const overlayDifix = document.getElementById('overlay-difix');
+        const divider3DGS = document.getElementById('divider-3dgs');
+        const dividerDifix = document.getElementById('divider-difix');
+        const slider3DGS = document.getElementById('slider-3dgs');
+        const sliderDifix = document.getElementById('slider-difix');
+        const lens3DGS = document.getElementById('lens-3dgs');
+        const lensDifix = document.getElementById('lens-difix');
+        const magnifierToggle = document.getElementById('magnifierToggle');
+        const comparisonMethodTabs = document.querySelectorAll('.comparison-method-tab');
+        const comparisonPanels = document.querySelectorAll('.comparison-panel');
+        const datasetIds = Object.keys(demoData);
+        let activeDataset = datasetIds[0];
+        let activeSceneIndex = 0;
+        let magnifierEnabled = false;
+        let magnifierRAF = null;
+        const comparisonVideos = [video3DGS, videoDifix, videoOursVs3DGS, videoOursVsDifix];
+        const comparisonStages = [
+            {
+                stage: stage3DGS,
+                frame: stage3DGS?.querySelector('.stage-media-frame'),
+                baseVideo: video3DGS,
+                referenceVideo: videoOursVs3DGS,
+                overlay: overlay3DGS,
+                divider: divider3DGS,
+                range: slider3DGS,
+                lens: lens3DGS,
+                pointer: { active: false, clientX: 0, clientY: 0 }
+            },
+            {
+                stage: stageDifix,
+                frame: stageDifix?.querySelector('.stage-media-frame'),
+                baseVideo: videoDifix,
+                referenceVideo: videoOursVsDifix,
+                overlay: overlayDifix,
+                divider: dividerDifix,
+                range: sliderDifix,
+                lens: lensDifix,
+                pointer: { active: false, clientX: 0, clientY: 0 }
+            }
+        ];
+        let isSyncingVideos = false;
+        let sliderUpdateRAF = null;
+
+        function playAllComparisons() {
+            comparisonVideos.forEach((video) => video?.play().catch(() => { }));
         }
+
+        function setActiveComparisonPanel(panelId) {
+            comparisonPanels.forEach((panel) => panel.classList.toggle('active', panel.id === panelId));
+            comparisonMethodTabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.panel === panelId));
+        }
+
+        function setMagnifierEnabled(enabled) {
+            magnifierEnabled = enabled;
+            comparisonStages.forEach(({ stage, lens, pointer }) => {
+                if (stage) stage.classList.toggle('magnifier-enabled', enabled);
+                lens?.classList.remove('active');
+                if (pointer) pointer.active = false;
+            });
+            if (magnifierToggle) {
+                magnifierToggle.setAttribute('aria-pressed', String(enabled));
+                magnifierToggle.classList.toggle('active', enabled);
+                magnifierToggle.innerHTML = `<i class="fas fa-magnifying-glass"></i> Magnifier: ${enabled ? 'On' : 'Off'}`;
+            }
+            if (enabled && !magnifierRAF) magnifierTick();
+        }
+
+        function magnifierTick() {
+            if (!magnifierEnabled) {
+                magnifierRAF = null;
+                return;
+            }
+            comparisonStages.forEach((stageInfo) => {
+                if (stageInfo.pointer?.active) {
+                    drawLensStage(stageInfo, stageInfo.pointer.clientX, stageInfo.pointer.clientY);
+                }
+            });
+            magnifierRAF = requestAnimationFrame(magnifierTick);
+        }
+
+        function syncVideosFrom(source) {
+            if (isSyncingVideos) return;
+            isSyncingVideos = true;
+            comparisonVideos.forEach((video) => {
+                if (!video || video === source) return;
+                if (Math.abs(video.currentTime - source.currentTime) > 0.08) {
+                    video.currentTime = source.currentTime;
+                }
+                if (source.paused) {
+                    if (!video.paused) video.pause();
+                } else if (video.paused) {
+                    video.play().catch(() => { });
+                }
+            });
+            isSyncingVideos = false;
+        }
+
+        comparisonVideos.forEach((video) => {
+            video?.addEventListener('play', () => syncVideosFrom(video));
+            video?.addEventListener('pause', () => syncVideosFrom(video));
+            video?.addEventListener('seeking', () => syncVideosFrom(video));
+        });
+
+        function resetAllVideos() {
+            comparisonVideos.forEach((video) => {
+                video?.pause();
+                if (video) video.currentTime = 0;
+            });
+        }
+
+        function updateStageOrientation(stage, video) {
+            if (!stage || !video?.videoWidth || !video?.videoHeight) return;
+            stage.dataset.orientation = video.videoWidth >= video.videoHeight ? 'landscape' : 'portrait';
+        }
+
+        function updateStageFrame(stage, video) {
+            if (!stage || !video?.videoWidth || !video?.videoHeight) return;
+            const aspectRatio = video.videoWidth / video.videoHeight;
+            const stageWidth = stage.clientWidth;
+            const stageHeight = stage.clientHeight;
+            if (!stageWidth || !stageHeight) return;
+            let frameWidth = stageWidth;
+            let frameHeight = frameWidth / aspectRatio;
+            if (frameHeight > stageHeight) {
+                frameHeight = stageHeight;
+                frameWidth = frameHeight * aspectRatio;
+            }
+            stage.style.setProperty('--media-width', `${frameWidth}px`);
+            stage.style.setProperty('--media-height', `${frameHeight}px`);
+        }
+
+        comparisonStages.forEach(({ stage, referenceVideo }) => {
+            referenceVideo?.addEventListener('loadedmetadata', () => {
+                updateStageOrientation(stage, referenceVideo);
+                updateStageFrame(stage, referenceVideo);
+            });
+        });
+
+        function computeCoverMap(video, frameWidth, frameHeight) {
+            const scale = Math.max(frameWidth / video.videoWidth, frameHeight / video.videoHeight);
+            const renderedWidth = video.videoWidth * scale;
+            const renderedHeight = video.videoHeight * scale;
+            const cropX = (renderedWidth - frameWidth) * 0.5;
+            const cropY = (renderedHeight - frameHeight) * 0.5;
+            return { scale, cropX, cropY };
+        }
+
+        function drawLensStage(stageInfo, clientX, clientY) {
+            const { frame, lens, baseVideo, referenceVideo, range } = stageInfo;
+            if (!magnifierEnabled || !frame || !lens || !baseVideo || !referenceVideo || !baseVideo.videoWidth || !referenceVideo.videoWidth) return;
+            const frameRect = frame.getBoundingClientRect();
+            if (clientX < frameRect.left || clientX > frameRect.right || clientY < frameRect.top || clientY > frameRect.bottom) {
+                lens.classList.remove('active');
+                return;
+            }
+
+            const xInFrame = clientX - frameRect.left;
+            const yInFrame = clientY - frameRect.top;
+            const radius = lens.width * 0.5;
+            const zoom = 2.2;
+            const ctx = lens.getContext('2d');
+            if (!ctx) return;
+            lens.classList.add('active');
+            lens.style.left = `${xInFrame}px`;
+            lens.style.top = `${yInFrame}px`;
+
+            const frameWidth = frameRect.width;
+            const frameHeight = frameRect.height;
+            const baseMap = computeCoverMap(baseVideo, frameWidth, frameHeight);
+            const oursMap = computeCoverMap(referenceVideo, frameWidth, frameHeight);
+
+            const sourceFrameX = xInFrame - radius / zoom;
+            const sourceFrameY = yInFrame - radius / zoom;
+            const sourceFrameW = (radius * 2) / zoom;
+            const sourceFrameH = (radius * 2) / zoom;
+
+            const baseSx = (sourceFrameX + baseMap.cropX) / baseMap.scale;
+            const baseSy = (sourceFrameY + baseMap.cropY) / baseMap.scale;
+            const baseSw = sourceFrameW / baseMap.scale;
+            const baseSh = sourceFrameH / baseMap.scale;
+
+            const oursSx = (sourceFrameX + oursMap.cropX) / oursMap.scale;
+            const oursSy = (sourceFrameY + oursMap.cropY) / oursMap.scale;
+            const oursSw = sourceFrameW / oursMap.scale;
+            const oursSh = sourceFrameH / oursMap.scale;
+
+            ctx.clearRect(0, 0, lens.width, lens.height);
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(radius, radius, radius - 1.5, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.drawImage(baseVideo, baseSx, baseSy, baseSw, baseSh, 0, 0, lens.width, lens.height);
+
+            const splitX = (Number(range?.value || 50) / 100) * frameWidth;
+            const overlayStart = (splitX - xInFrame) * zoom + radius;
+            const overlayClipStart = Math.max(0, Math.min(lens.width, overlayStart));
+            if (overlayClipStart < lens.width) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(overlayClipStart, 0, lens.width - overlayClipStart, lens.height);
+                ctx.clip();
+                ctx.drawImage(referenceVideo, oursSx, oursSy, oursSw, oursSh, 0, 0, lens.width, lens.height);
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        function setSliderPosition(overlay, divider, range, value) {
+            if (!overlay || !divider || !range) return;
+            const clamped = Math.max(0, Math.min(100, Number(value)));
+            overlay.style.clipPath = `inset(0 0 0 ${clamped}%)`;
+            divider.style.left = `${clamped}%`;
+            range.value = clamped;
+        }
+
+        function scheduleSliderPosition(stageInfo, value) {
+            stageInfo.pendingSliderValue = Math.max(0, Math.min(100, Number(value)));
+            if (sliderUpdateRAF) return;
+            sliderUpdateRAF = requestAnimationFrame(() => {
+                comparisonStages.forEach((info) => {
+                    if (typeof info.pendingSliderValue === 'number') {
+                        setSliderPosition(info.overlay, info.divider, info.range, info.pendingSliderValue);
+                        info.pendingSliderValue = null;
+                    }
+                });
+                sliderUpdateRAF = null;
+            });
+        }
+
+        comparisonStages.forEach((stageInfo) => {
+            const { overlay, divider, range } = stageInfo;
+            setSliderPosition(overlay, divider, range, range?.value ?? 50);
+            range?.addEventListener('input', () => scheduleSliderPosition(stageInfo, range.value));
+        });
+
+        comparisonStages.forEach((stageInfo) => {
+            const { stage, lens, pointer } = stageInfo;
+            stage?.addEventListener('mouseenter', (event) => {
+                pointer.active = true;
+                pointer.clientX = event.clientX;
+                pointer.clientY = event.clientY;
+                drawLensStage(stageInfo, event.clientX, event.clientY);
+            });
+            stage?.addEventListener('mousemove', (event) => {
+                pointer.active = true;
+                pointer.clientX = event.clientX;
+                pointer.clientY = event.clientY;
+                drawLensStage(stageInfo, event.clientX, event.clientY);
+            });
+            stage?.addEventListener('mouseleave', () => {
+                pointer.active = false;
+                lens?.classList.remove('active');
+            });
+        });
+
+        window.addEventListener('resize', () => {
+            comparisonStages.forEach(({ stage, referenceVideo, overlay, divider, range }) => {
+                updateStageFrame(stage, referenceVideo);
+                setSliderPosition(overlay, divider, range, range?.value ?? 50);
+            });
+        });
+
+        function renderDatasetTabs() {
+            if (!datasetTabs) return;
+            datasetTabs.innerHTML = datasetIds.map((datasetId) => {
+                const dataset = demoData[datasetId];
+                const isActive = datasetId === activeDataset ? ' active' : '';
+                return `<button type="button" class="dataset-tab${isActive}" data-dataset="${datasetId}">${dataset.label}</button>`;
+            }).join('');
+            datasetTabs.querySelectorAll('.dataset-tab').forEach((button) => {
+                button.addEventListener('click', () => {
+                    activeDataset = button.dataset.dataset;
+                    activeSceneIndex = 0;
+                    renderComparison();
+                });
+            });
+        }
+
+        function renderSceneChips() {
+            if (!sceneChips) return;
+            const scenes = demoData[activeDataset].scenes;
+            const scene = scenes[activeSceneIndex];
+            sceneChips.innerHTML = `<span class="scene-chip scene-chip-current">${scene.label}</span>`;
+        }
+
+        function renderComparison(shouldResetVideos = true) {
+            const dataset = demoData[activeDataset];
+            const scene = dataset.scenes[activeSceneIndex];
+            renderDatasetTabs();
+            renderSceneChips();
+            activeDatasetName.textContent = dataset.label;
+            activeSceneName.textContent = scene.label;
+            activeSceneCount.textContent = `${dataset.scenes.length} matched scenes`;
+            if (shouldResetVideos) resetAllVideos();
+            video3DGS.src = scene.gs;
+            videoDifix.src = scene.difix;
+            videoOursVs3DGS.src = scene.ours;
+            videoOursVsDifix.src = scene.ours;
+            video3DGS.load();
+            videoDifix.load();
+            videoOursVs3DGS.load();
+            videoOursVsDifix.load();
+            comparisonStages.forEach(({ stage }) => {
+                if (!stage) return;
+                stage.dataset.orientation = 'landscape';
+                stage.style.setProperty('--media-width', '100%');
+                stage.style.setProperty('--media-height', '100%');
+            });
+            requestAnimationFrame(playAllComparisons);
+        }
+
+        scenePrev?.addEventListener('click', () => {
+            const scenes = demoData[activeDataset].scenes;
+            activeSceneIndex = (activeSceneIndex - 1 + scenes.length) % scenes.length;
+            renderComparison();
+        });
+
+        sceneNext?.addEventListener('click', () => {
+            const scenes = demoData[activeDataset].scenes;
+            activeSceneIndex = (activeSceneIndex + 1) % scenes.length;
+            renderComparison();
+        });
+
+        comparisonMethodTabs.forEach((tab) => {
+            tab.addEventListener('click', () => {
+                setActiveComparisonPanel(tab.dataset.panel);
+                playAllComparisons();
+            });
+        });
+
+        magnifierToggle?.addEventListener('click', () => {
+            setMagnifierEnabled(!magnifierEnabled);
+        });
+
+        setActiveComparisonPanel('panel-3dgs');
+        setMagnifierEnabled(false);
+        renderComparison();
+        playAllComparisons();
     </script>
 </body>
 
