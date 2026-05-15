@@ -1,0 +1,851 @@
+# pylint: disable=[E1101,E1102,R1719,W0201]
+
+import os
+import random
+import copy
+import json
+import math
+from typing import List
+from omegaconf import OmegaConf
+
+import tqdm
+import torch
+import torch.nn.functional as F
+import numpy as np
+
+from conerf.base.model_base import ModelBase
+from conerf.base.optimizer_group import OptimizerGroup
+from conerf.base.task_queue import ImageReader
+from conerf.datasets.utils import (
+    fetch_ply, compute_nerf_plus_plus_norm,
+    create_dataset, get_block_info_dir, BasicPointCloud,
+)
+from conerf.geometry.camera import Camera
+from conerf.gaussian_fields.gaussian_splat_model import GaussianSplatModel
+from conerf.gaussian_fields.masks import DecoupledAppearanceEmbedding
+from conerf.gaussian_fields.pose_embed import CameraOptModule
+from conerf.gaussian_fields.app_embed import AppearanceOptModule
+from conerf.render.gaussian_render import render_gsplat
+from conerf.trainers.implicit_recon_trainer import ImplicitReconTrainer
+
+# SelectiveAdam is the same as the SparseGaussianAdam in Taming-3DGS.
+from gsplat.optimizers.selective_adam import SelectiveAdam
+from gsplat.strategy import DefaultStrategy, MCMCStrategy
+from fused_ssim import fused_ssim
+from FasterGSCudaBackend import FusedAdam
+
+
+# NOTE: We define a callable class instead of a closure since a closure cannot
+# be serialized by torch's rpc.
+class ExponentialLR:  # pylint: disable=[R0903]
+    def __init__(
+        self,
+        lr_init: float,
+        lr_final: float,
+        lr_delay_steps: int = 0,
+        lr_delay_mult: float = 1.0,
+        max_steps: int = 1000000
+    ):
+        self.lr_init = lr_init
+        self.lr_final = lr_final
+        self.lr_delay_steps = lr_delay_steps
+        self.lr_delay_mult = lr_delay_mult
+        self.max_steps = max_steps
+
+    def __call__(self, step):
+        if step < 0 or (self.lr_init == 0.0 and self.lr_final == 0.0):
+            return 0.0
+
+        if self.lr_delay_steps > 0:
+            delay_rate = self.lr_delay_mult + (1 - self.lr_delay_mult) * np.sin(
+                0.5 * np.pi * np.clip(step / self.lr_delay_steps, 0, 1)
+            )
+        else:
+            delay_rate = 1.0
+
+        t = np.clip(step / self.max_steps, 0, 1)
+        log_lerp = np.exp(np.log(self.lr_init) * (1 - t) +
+                          np.log(self.lr_final) * t)
+
+        return delay_rate * log_lerp
+
+
+def extract_pose_tensor_from_cameras(
+    cameras: List,
+    noises: torch.Tensor = None,
+    corrections: torch.Tensor = None,
+) -> torch.Tensor:
+    num_cameras = len(cameras)
+    poses = torch.zeros((num_cameras, 4, 4), dtype=torch.float32).cuda()
+
+    for i in range(num_cameras):
+        poses[i, :3, :3] = cameras[i].R
+        poses[i, :3, 3] = cameras[i].t
+        poses[i, 3, 3] = 1.0
+
+        # Add noise.
+        if noises is not None:
+            poses[i] = poses[i] @ noises[i]
+
+        # Correct noise.
+        if corrections is not None:
+            poses[i] = poses[i] @ corrections[i]
+
+    return poses
+
+
+def load_val_dataset(config: OmegaConf, device: str = 'cuda'):
+    val_config = copy.deepcopy(config)
+    val_config.dataset.multi_blocks = False
+    val_config.dataset.num_blocks = 1
+    val_dataset = create_dataset(
+        config=val_config,
+        split=val_config.dataset.val_split,
+        num_rays=None,
+        apply_mask=val_config.dataset.apply_mask,
+        device=device
+    )
+    return val_dataset
+
+
+def get_uniform_points_on_sphere_fibonacci(num_points):
+    # https://arxiv.org/pdf/0912.4540.pdf
+    # Golden angle in radians
+    phi = math.pi * (3. - math.sqrt(5.))
+    N = (num_points - 1) / 2
+    i = torch.linspace(-N, N, num_points, dtype=torch.float32)
+    lat = torch.arcsin(2.0 * i / (2 * N + 1))
+    lon = phi * i
+
+    # Spherical to cartesian
+    x = torch.cos(lon) * torch.cos(lat)
+    y = torch.sin(lon) * torch.cos(lat)
+    z = torch.sin(lat)
+    return torch.stack([x, y, z], -1)
+
+
+@torch.no_grad()
+def get_sky_points(num_points, points3D: torch.Tensor, cameras: List[Camera]):
+    points = get_uniform_points_on_sphere_fibonacci(
+        num_points).to(points3D.device)
+    mean = points3D.mean(0)[None]
+    sky_distance = torch.quantile(
+        torch.linalg.norm(points3D - mean, 2, -1), 0.97) * 10
+    points = points * sky_distance
+    points = points + mean
+    gmask = torch.zeros((points.shape[0],),
+                        dtype=torch.bool, device=points.device)
+    for cam in tqdm.tqdm(cameras, desc="Generating skybox"):
+        uv = cam.project(
+            points[torch.logical_not(gmask)].T[None, ...],
+            normalize=False
+        ).squeeze(0)
+        mask = torch.logical_not(torch.isnan(uv).any(-1))
+        # Only top 2/3 of the image
+        mask = torch.logical_and(mask, uv[..., -1] < 2/3 * cam.height)
+        gmask[torch.logical_not(gmask)] = torch.logical_or(
+            gmask[torch.logical_not(gmask)], mask
+        )
+
+    return points[gmask], sky_distance / 2
+
+def sort_param_groups(
+    optimizer: torch.optim.Optimizer,
+    ordering: torch.Tensor,
+    group_names: list[str] | None = None
+) -> dict[str, torch.Tensor]:
+    """Sorts parameter entries based on the given ordering."""
+    # new_params = {}
+    print(f'num param_groups: {len(optimizer.param_groups)}')
+    for group in optimizer.param_groups:
+        if group_names is not None and group['name'] not in group_names:
+            continue
+        if len(group['params']) != 1:
+            raise NotImplementedError('"sort_param_groups" only implemented for single-parameter groups.')
+        old_param = group['params'][0]
+        state = optimizer.state[old_param]
+        new_param = torch.nn.Parameter(old_param[ordering])
+        if state:
+            for val in ['exp_avg', 'exp_avg_sq']:
+                state[val] = state[val][ordering]
+            optimizer.state.pop(old_param)
+            optimizer.state[new_param] = state
+        group['params'][0] = new_param
+        # new_params[group['name']] = new_param
+    return new_param
+
+
+class GaussianSplatTrainer(ImplicitReconTrainer):
+    """
+    Trainer for 3D Gaussian Splatting model.
+    """
+
+    def __init__(
+        self,
+        config: OmegaConf,
+        prefetch_dataset: bool = True,
+        trainset=None,
+        valset=None,
+        model: ModelBase = None,
+        appear_embedding: torch.nn.Module = None,
+        block_id: int = None,
+        device_id: int = 0,
+    ) -> None:
+        self.gaussians = None
+        self.optimizers = OptimizerGroup()
+
+        if valset is None:
+            valset = load_val_dataset(config, 'cpu')
+
+        self.admm_enabled = False
+
+        super().__init__(config, prefetch_dataset,
+                         trainset, valset, model, appear_embedding, block_id, device_id)
+
+    def init_gaussians(self):
+        # Using semantic alias to better understand the code.
+        self.gaussians = self.model
+        # Initialize 3D Gaussians from COLMAP point clouds.
+        data_dir = os.path.join(
+            self.config.dataset.root_dir, self.config.dataset.scene)
+        colmap_dir = os.path.join(
+            data_dir, self.config.dataset.get(
+                "model_folder", "sparse"),  # model_folder,
+            "manhattan_world" if self.config.dataset.get(
+                "use_manhattan_world", False) else "0"
+        )
+        pcl_name = "points3D"
+        if self.config.dataset.multi_blocks:
+            pcl_name += f"_{self.train_dataset.current_block}"
+            mx = self.config.dataset.get("mx", None)  # pylint: disable=C0103
+            my = self.config.dataset.get("my", None)  # pylint: disable=C0103
+            data_dir = get_block_info_dir(
+                data_dir, self.config.dataset.num_blocks, mx, my)
+            colmap_ply_path = os.path.join(data_dir, f"{pcl_name}.ply")
+        else:
+            colmap_ply_path = os.path.join(
+                colmap_dir, f"{pcl_name}.ply")
+        print(f'Initialize 3DGS using {colmap_ply_path}')
+
+        point_cloud = fetch_ply(colmap_ply_path)
+        sky_pcd = self.init_skybox(torch.from_numpy(point_cloud.points))
+
+        init_opacity = self.config.geometry.init_opacity if self.use_mcmc else 0.1
+        init_scale = self.config.geometry.init_scale if self.use_mcmc else 1.0
+        self.gaussians.init_from_colmap_pcd(
+            point_cloud,
+            sky_pcd=sky_pcd,
+            init_opacity=init_opacity,
+            init_scale=init_scale,
+        )
+        bounding_box = ImplicitReconTrainer.read_bounding_box(colmap_dir)
+        self.bounding_box = torch.tensor(bounding_box, dtype=torch.float32) \
+            if bounding_box is not None else None
+
+        # Depth params.
+        depth_params_filepath = os.path.join(colmap_dir, "depth_params.json")
+        self.image_index_to_depth_params = dict()  # global index -> depth_param
+        if os.path.exists(depth_params_filepath):
+            with open(depth_params_filepath, "r", encoding="utf-8") as json_file:
+                depth_params = json.load(json_file)
+                all_scales = np.array([depth_params[key]["scale"]
+                                      for key in depth_params])
+                if (all_scales > 0).sum():
+                    med_scale = np.median(all_scales[all_scales > 0])
+                else:
+                    med_scale = 0
+                # Map depth params to camera by image name.
+                for camera in self.train_dataset.cameras:
+                    image_path = camera.image_path
+                    image_name = os.path.basename(
+                        os.path.splitext(image_path)[0])
+                    depth_param = depth_params[image_name]
+                    depth_param["med_scale"] = med_scale
+                    global_index = self.image_idx_to_global_index[camera.image_index]
+                    self.image_index_to_depth_params[global_index] = depth_param
+
+    def build_networks(self):
+        self.model = GaussianSplatModel(
+            max_sh_degree=self.config.texture.max_sh_degree,
+            percent_dense=self.config.geometry.percent_dense,
+            app_feat_dim=self.config.appearance.get("app_feat_dim", None) if \
+                self.config.appearance.use_app_embed else None,
+            device=self.device,
+        )
+
+        # Exposure
+        self.exposure = None
+        if self.config.appearance.use_trained_exposure:
+            exposure = torch.eye(3, 4, device=self.device)[None].repeat(
+                self.config.appearance.input_dim, 1, 1)
+            self.exposure = torch.nn.Parameter(exposure.requires_grad_(True))
+
+        # Decoupled appearance embedding.
+        self.dec_app_embedding = None
+        if self.config.geometry.get("mask", False):
+            self.dec_app_embedding = DecoupledAppearanceEmbedding(
+                len(self.train_dataset.cameras)).to(self.device)
+
+        # Appearance embedding.
+        self.app_module = None
+        if self.config.appearance.use_app_embed:
+            feature_dim = self.config.appearance.app_feat_dim
+            embed_dim = self.config.appearance.app_embed_dim
+            self.app_module = AppearanceOptModule(
+                self.config.appearance.input_dim,
+                feature_dim,
+                embed_dim,
+                self.config.texture.max_sh_degree,
+            ).to(self.device)
+
+        self.init_gaussians()
+
+    def setup_training_params(self):
+        self.color_bkgd = torch.tensor(
+            [0, 0, 0], dtype=torch.float32, device=self.device)
+        self.ema_loss = 0.0
+        self.use_white_bkgd = \
+            True if self.config.dataset.apply_mask else False
+
+        self.image_reader = None
+
+        random.shuffle(self.train_dataset.cameras)
+        self.train_cameras = self.train_dataset.cameras.copy()
+        self.train_camera_idxs = [
+            camera.image_index for camera in self.train_cameras]
+        self.image_idx_to_global_index = {
+            idx: i for i, idx in enumerate(self.train_camera_idxs)
+        }
+
+        spatial_lr_scale = self.config.geometry.get("spatial_lr_scale", -1)
+        if spatial_lr_scale < 0:
+            self.spatial_lr_scale = compute_nerf_plus_plus_norm(
+                self.train_cameras)
+        else:
+            self.spatial_lr_scale = spatial_lr_scale
+
+        # Densification strategy.
+        self.use_mcmc = self.config.geometry.get("densify_strategy", "mcmc") == "mcmc"
+        if self.use_mcmc:
+            self.densify_strategy = MCMCStrategy(
+                refine_start_iter=self.config.geometry.densify_start_iter,
+                refine_stop_iter=self.config.geometry.densify_end_iter,
+                refine_every=self.config.geometry.densification_interval,
+                min_opacity=self.config.geometry.min_opacity,
+                cap_max=self.config.geometry.get("cap_max", 1000000),
+                noise_lr=self.config.geometry.get("noise_lr", 5e5),
+                verbose=False,
+            )
+            self.strategy_state = self.densify_strategy.initialize_state()
+        else:
+            self.densify_strategy = DefaultStrategy(
+                refine_start_iter=self.config.geometry.densify_start_iter,
+                refine_stop_iter=self.config.geometry.densify_end_iter,
+                refine_every=self.config.geometry.densification_interval,
+                reset_every=self.config.geometry.opacity_reset_interval,
+                prune_opa=self.config.geometry.min_opacity,
+                verbose=False,
+            )
+            self.strategy_state = self.densify_strategy.initialize_state(
+                scene_scale=self.spatial_lr_scale,
+            )
+
+    def init_skybox(self, scene_points: torch.Tensor):
+        sky_pcd = None
+        skybox, skycolor = None, None
+        if self.config.appearance.get("num_sky_gaussians", 0):
+            skybox, self._sky_distance = get_sky_points(
+                self.config.appearance.num_sky_gaussians,
+                scene_points,
+                self.train_cameras,
+            )
+            skybox = skybox.cpu().numpy()
+            skycolor = np.array(
+                [[237, 247, 252]],
+            ).repeat(skybox.shape[0], axis=0) / 255.0
+            print(f'Adding skybox with {skybox.shape[0]} points')
+
+        if skybox is not None:
+            sky_pcd = BasicPointCloud(
+                points=skybox, colors=skycolor, normals=np.zeros_like(skycolor)
+            )
+
+        return sky_pcd
+
+    def setup_optimizer(self):
+        # Trivial hack when model is passed to the constructor.
+        if self.gaussians is None:
+            self.gaussians = self.model
+
+        self.setup_gaussian_optimizer()
+        self.setup_appearance_mask_optimizer()
+        self.setup_exposure_optimizer()
+        self.setup_pose_optimizer()
+        self.setup_app_optimizer()
+
+        lr_config = self.config.optimizer.lr
+        self.xyz_scheduler = ExponentialLR(
+            lr_init=lr_config.position_init * self.spatial_lr_scale,
+            lr_final=lr_config.position_final * self.spatial_lr_scale,
+            lr_delay_mult=lr_config.position_delay_mult,
+            max_steps=lr_config.position_max_iterations
+        )
+
+        self.depth_scheduler = None
+        if self.config.dataset.get("load_depth", False):
+            self.depth_scheduler = ExponentialLR(
+                lr_init=self.config.optimizer.lr_depth.l1_weight_init,
+                lr_final=self.config.optimizer.lr_depth.l1_weight_final,
+                max_steps=self.config.trainer.max_iterations,
+            )
+
+    def setup_gaussian_optimizer(self):
+        lr_config = self.config.optimizer.lr
+        lr_params = [
+            ("means", self.gaussians.get_xyz,
+             lr_config.position_init * self.spatial_lr_scale,),
+            ("opacities", self.gaussians.get_raw_opacity, lr_config.opacity),
+            ("scales", self.gaussians.get_raw_scaling, lr_config.scaling),
+            ("quats", self.gaussians.get_raw_quaternion, lr_config.quaternion),
+        ]
+
+        if self.app_module is None:
+            lr_params.append((
+                "sh0", self.gaussians.get_features_dc, lr_config.feature
+            ))
+            lr_params.append((
+                "shN", self.gaussians.get_features_rest, lr_config.feature / 20.0
+            ))
+        else:
+            lr_params.append((
+                "features", self.gaussians.get_features_dc, lr_config.feature 
+            ))
+            lr_params.append((
+                "colors", self.gaussians.get_colors, self.config.optimizer.lr_app.colors
+            ))
+
+        for name, params, lr in lr_params:
+            self.optimizers.add_optimizer(
+                name, FusedAdam([params], lr=lr, eps=1e-15)
+            )
+
+    def setup_appearance_mask_optimizer(self):
+        lr_config = self.config.optimizer.lr
+
+        if self.mask is not None:
+            dec_app_optimizer = torch.optim.Adam(
+                self.mask.parameters(), lr=lr_config.mask
+            )
+            self.optimizers.add_optimizer(
+                "decouple_app_embed", dec_app_optimizer)
+
+    def setup_exposure_optimizer(self):
+        lr_config = self.config.optimizer.lr
+        self.exposure_scheduler = None
+        if self.config.appearance.use_trained_exposure:
+            exposure_optimizer = torch.optim.Adam([self.exposure])
+            self.exposure_scheduler = ExponentialLR(
+                lr_init=lr_config.exposure_lr_init,
+                lr_final=lr_config.exposure_lr_final,
+                lr_delay_steps=lr_config.exposure_lr_delay_steps,
+                lr_delay_mult=lr_config.exposure_lr_delay_mult,
+                max_steps=lr_config.exposure_max_iterations,
+            )
+            self.optimizers.add_optimizer("exposure", exposure_optimizer)
+            # self.optimizers.add_scheduler("exposure", exposure_scheduler)
+
+    def setup_pose_optimizer(self):
+        if not self.optimize_camera_poses:
+            return
+
+        self.gt_poses = extract_pose_tensor_from_cameras(
+            self.train_dataset.cameras)
+
+        self.pose_adjust = CameraOptModule(
+            len(self.train_dataset.cameras)).to(self.device)
+        self.pose_adjust.zero_init()
+        pose_optimizer = torch.optim.Adam(
+            self.pose_adjust.parameters(),
+            lr=self.config.optimizer.lr_pose,
+            weight_decay=1e-6,
+        )
+        pose_scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            self.pose_optimizer, gamma=0.01 ** (1.0 /
+                                                self.config.trainer.max_iterations)
+        )
+        self.optimizers.add_optimizer("pose", pose_optimizer)
+        self.optimizers.add_scheduler("pose", pose_scheduler)
+
+    def setup_app_optimizer(self):
+        if self.config.appearance.use_app_embed:
+            app_optimizers = [
+                torch.optim.Adam(
+                    self.app_module.embeds.parameters(),
+                    lr=self.config.optimizer.lr_app.app_module * 10.0,
+                    weight_decay=1e-6,
+                ),
+                torch.optim.Adam(
+                    self.app_module.color_head.parameters(),
+                    lr=self.config.optimizer.lr_app.app_module,
+                )
+            ]
+            for i, optimizer in enumerate(app_optimizers):
+                self.optimizers.add_optimizer(f"app{i}", optimizer)
+
+    def update_learning_rate(self):
+        """Learning rate scheduling per step."""
+        self._update_gaussian_params_lr()
+        self._update_exposure_params_lr()
+
+    def _update_gaussian_params_lr(self):
+        if self.xyz_scheduler is None:
+            return
+
+        for param_group in self.optimizers.optimizers["means"].param_groups:
+            lr = self.xyz_scheduler(self.iteration)
+            param_group['lr'] = lr
+            return lr
+
+    def _update_exposure_params_lr(self):
+        if self.exposure_scheduler is None:  # pylint: disable=C0201
+            return
+
+        for param_group in self.optimizers.optimizers["exposure"].param_groups:
+            param_group['lr'] = self.exposure_scheduler(self.iteration)
+
+    def training_resolution(self) -> int:
+        if not self.config.geometry.get('coarse-to-fine', False):
+            return 1
+
+        n_interval = 3
+        iteration_threshold = min(
+            20000, self.config.geometry.densify_end_iter) // n_interval
+        resolution = 2 ** max(n_interval - self.iteration //
+                              iteration_threshold - 1, 0)
+
+        return resolution
+
+    def add_admm_penalties(self, loss):
+        raise NotImplementedError
+
+    def get_gs_primitive_optimizers(self):
+        names = [
+            "means", "scales", "quats", "opacities", "sh0", "shN", "features", "colors"
+        ]
+        optimizers = {}
+        for name, optimizer in self.optimizers.optimizers.items():
+            if name in names:
+                optimizers[name] = optimizer
+        return optimizers
+
+    def train_iteration(self, data_batch) -> None:  # pylint: disable=W0613
+        self.gaussians.train()
+        self.update_learning_rate()
+
+        # Increase the levels of SH up to a maximum degree.
+        if self.iteration % 1000 == 0:
+            self.gaussians.increase_SH_degree()
+
+        # Training finished and safely exit.
+        if (self.iteration - 1) >= self.config.trainer.max_iterations:
+            self.image_reader.safe_shutdown()
+            return torch.zeros(1), torch.zeros(1)
+
+        # Pick a random camera.
+        if self.image_reader is None or (not self.image_reader.has_next()):
+            random.shuffle(self.train_cameras)
+            image_list = [camera.image_path for camera in self.train_cameras]
+            # Add depth list if exists!
+            depth_list = [camera.depth_path for camera in self.train_cameras] \
+                if self.config.dataset.get("load_depth", False) else None
+            # Add sky mask list if exists!
+            sky_mask_list = [camera.mask_path for camera in self.train_cameras] \
+                if self.config.dataset.get("load_sky_mask", False) else None
+
+            if self.image_reader is None:
+                self.image_reader = ImageReader(
+                    num_channels=self.config.dataset.get('num_channels', 3),
+                    max_num_threads=self.config.trainer.get('num_workers', 8),
+                    max_size=len(image_list),
+                    image_list=image_list,
+                    depth_list=depth_list,
+                    mask_list=sky_mask_list,
+                )
+            else:
+                self.image_reader.image_list = image_list
+                self.image_reader.depth_list = depth_list
+                self.image_reader.mask_list = sky_mask_list
+
+            self.image_reader.start_loading()
+
+        image_index, image, inv_depth, _, __ = self.image_reader.get_next()
+        camera = copy.deepcopy(self.train_cameras[image_index])
+        global_index = self.image_idx_to_global_index[camera.image_index]
+
+        camera.image = image
+        if inv_depth is not None:
+            camera.inv_depth = inv_depth
+            if hasattr(self, 'image_index_to_depth_params'):
+                camera.depth_params = self.image_index_to_depth_params.get(
+                    camera.image_index, {}
+                )
+            camera.check_depth()
+        resolution = self.training_resolution()
+        camera_origin = camera.copy_to_device(self.device) \
+            if self.mask is not None else None
+        camera = camera.downsample(resolution).copy_to_device(self.device)
+
+        self.scalars_to_log['train/resolution'] = resolution
+
+        # Since we only update on the copy of cameras, the update won't
+        # be accumulated continuously on the same cameras.
+        if self.optimize_camera_poses and (camera.image_index != 0) and \
+           (self.iteration > self.config.geometry.opt_pose_start_iter):
+            image_index = camera.image_index
+
+        precompute_colors = None
+        if self.app_module is not None:
+            dirs = self.gaussians.get_xyz - camera.camera_center.repeat(
+                self.gaussians.get_features.shape[0], 1)
+            precompute_colors = self.app_module(
+                features=self.gaussians.get_features,
+                embed_ids=torch.tensor([global_index], device=self.device),
+                dirs=dirs[None],
+                sh_degree=self.gaussians.max_sh_degree,
+            )
+            precompute_colors = precompute_colors + self.gaussians.get_colors
+            precompute_colors = torch.sigmoid(precompute_colors)
+
+        render_results = render_gsplat(
+            gaussian_splat_model=self.gaussians,
+            viewpoint_camera=camera,
+            pipeline_config=self.config.pipeline,
+            bkgd_color=self.color_bkgd,
+            anti_aliasing=self.config.texture.anti_aliasing,
+            separate_sh=False,  # True,
+            # use_trained_exposure=self.config.appearance.use_trained_exposure,
+            exposure=self.exposure[global_index] if self.exposure is not None else None,
+            override_color=precompute_colors,
+            device=self.device,
+        )
+        colors, screen_space_points, visibility_filter, radii = (
+            render_results["rendered_image"],
+            render_results["screen_space_points"],
+            render_results["visibility_filter"],
+            render_results["radii"],
+        )
+
+        self.densify_strategy.step_pre_backward(
+            params=self.gaussians.get_param_dict(),
+            optimizers=self.get_gs_primitive_optimizers(),
+            state=self.strategy_state,
+            step=self.iteration,
+            info=render_results["info"],
+        )
+
+        # Compute loss.
+        lambda_dssim = self.config.loss.lambda_dssim
+        lambda_mask = self.config.loss.lambda_mask
+        pixels = camera.image.permute(2, 0, 1)  # [RGB, height, width]
+        # loss_ssim = ssim(pixels, colors)
+        loss_ssim = fused_ssim(colors.unsqueeze(0), pixels.unsqueeze(0))
+        if self.mask is not None:
+            image_size = camera.image.shape[:-1]
+            camera = camera_origin.downsample(32).copy_to_device(self.device)
+            mask = self.mask(camera.image.permute(2, 0, 1),
+                             camera.image_index, image_size)
+            loss_rgb_l1 = F.l1_loss(colors * mask, pixels)
+            loss = (1.0 - lambda_dssim) * loss_rgb_l1 + \
+                lambda_dssim * (1.0 - loss_ssim) + \
+                lambda_mask * torch.mean((mask - 1) **
+                                         2.)  # Regularization for mask
+        else:
+            loss_rgb_l1 = F.l1_loss(colors, pixels)
+            loss = (1.0 - lambda_dssim) * loss_rgb_l1 + \
+                lambda_dssim * (1.0 - loss_ssim)
+
+        # Scaling loss.
+        lambda_scale = self.config.loss.lambda_scale if self.use_mcmc else 0
+        loss_scaling = torch.abs(render_results["scaling"]).mean()
+        loss += lambda_scale * loss_scaling
+
+        # Opacity Loss.
+        lambda_opacity = self.config.loss.lambda_opacity if self.use_mcmc else 0
+        loss_opacity = torch.abs(self.gaussians.get_opacity).mean()
+        loss += lambda_opacity * loss_opacity
+
+        # Depth loss.
+        if self.depth_scheduler is not None and (
+            self.depth_scheduler(self.iteration) > 0 and camera.depth_reliable
+        ):
+            inv_depth = 1.0 / (render_results["depth"] + 1e-6)
+            mono_inv_depth = camera.inv_depth
+            l1_depth_pure = torch.abs(inv_depth - mono_inv_depth).mean()
+            l1_loss_depth = self.depth_scheduler(
+                self.iteration) * l1_depth_pure
+            loss += l1_loss_depth
+            self.scalars_to_log["train/depth_loss"] = l1_loss_depth.detach().item()
+
+        if self.admm_enabled:
+            loss = self.add_admm_penalties(loss)
+
+        loss.backward()
+
+        self.ema_loss = 0.4 * loss.detach().item() + 0.6 * \
+            self.ema_loss  # pylint: disable=W0201
+
+        mse = F.mse_loss(colors, pixels)
+        psnr = -10.0 * torch.log(mse) / np.log(10.0)
+
+        # training statistics.
+        self.scalars_to_log["train/psnr"] = psnr.detach().item()
+        self.scalars_to_log["train/loss"] = loss.detach().item()
+        self.scalars_to_log["train/l1_loss"] = loss_rgb_l1.detach().item()
+        self.scalars_to_log["train/scale_loss"] = loss_scaling.detach().item()
+        self.scalars_to_log["train/opacity_loss"] = loss_opacity.detach().item()
+        self.scalars_to_log["train/ema_loss"] = self.ema_loss
+        self.scalars_to_log["train/points"] = self.gaussians.get_xyz.shape[0]
+
+        # Optimizer step.
+        visibility_mask = (radii > 0).any(0)
+        self.optimizers.step_and_zero_grad(
+            set_to_none=True,
+            visibility_mask=visibility_mask,
+        )
+        self.optimizers.schedule()
+
+        if self.config.geometry.get("densify_strategy", "mcmc") == "mcmc":
+            self.densify_strategy.step_post_backward(
+                params=self.gaussians.get_param_dict(),
+                optimizers=self.get_gs_primitive_optimizers(),
+                state=self.strategy_state,
+                step=self.iteration,
+                info=render_results["info"],
+                lr=self.xyz_scheduler(self.iteration),
+            )
+        else:
+            # self.step_post_backward(pixels, screen_space_points, visibility_filter, radii)
+            self.densify_strategy.step_post_backward(
+                params=self.gaussians.get_param_dict(),
+                optimizers=self.get_gs_primitive_optimizers(),
+                state=self.strategy_state,
+                step=self.iteration,
+                info=render_results["info"],
+                packed=False,
+            )
+
+        if self.iteration % self.config.trainer.n_checkpoint == 0:
+            self.compose_state_dicts()
+
+        # Update camera pose.
+        if self.optimize_camera_poses and (camera.image_index != 0) and \
+           (self.iteration > self.config.geometry.opt_pose_start_iter):
+            self.train_dataset.cameras[image_index].update_camera_pose()
+    
+        return psnr, loss_rgb_l1
+
+    def compose_state_dicts(self) -> None:
+        self.state_dicts = {
+            "models": dict(),
+            "optimizers": dict(),
+            "schedulers": dict(),  # No scheduler needs to be stored.
+            "meta_data": dict(),
+        }
+
+        # self.state_dicts["models"]["model"] = None
+        # for name, optimizer in self.optimizers.optimizers.items():
+        #     self.state_dicts["optimizers"][f"optimizer_{name}"] = optimizer
+
+        # # Exposure related.
+        # if self.exposure is not None:
+        #     self.state_dicts["meta_data"]["exposure"] = self.exposure
+
+        if self.config.appearance.use_app_embed:
+            self.state_dicts["models"]["app_module"] = self.app_module
+
+        self.state_dicts["meta_data"]["spatial_lr_scale"] = self.spatial_lr_scale
+        # self.state_dicts["meta_data"]["camera_poses"] = self.train_dataset.camtoworlds
+
+    def save_checkpoint(self, score = 0):
+        super().save_checkpoint(score)
+
+        meta = {
+            "num_train_images": len(self.train_cameras),
+            "active_sh_degree": self.gaussians.active_sh_degree,
+            "iteration": self.iteration,
+        }
+        with open(
+            os.path.join(self.output_path, "meta_non_splats.json"), "w", encoding="utf-8"
+        ) as f:
+            json.dump(meta, f)
+
+        splat_dir = os.path.join(self.output_path, "splats")
+        os.makedirs(splat_dir, exist_ok=True)
+        if self.config.compression.get("enabled", False):
+            if self.iteration >= self.config.trainer.max_iterations:
+                self.gaussians.compress(self.output_path)
+        else:
+            ply_path = os.path.join(splat_dir, f"ckpt_splat_{self.iteration}.ply")
+            if not os.path.exists(ply_path):
+                self.gaussians.save_ply(ply_path)
+
+        if self.iteration >= self.config.trainer.max_iterations:
+            if not self.config.compression.get("enabled", False):
+                os.system(f'cp {ply_path} {os.path.join(self.output_path, "final_splat.ply")}')
+
+            splat_path = os.path.join(self.output_path, "web_splat.splat")
+            if not os.path.exists(splat_path) and \
+               self.config.trainer.get("export_splat", False) is True:
+                rgb = self.app_module(
+                    features=self.gaussians.get_features,
+                    embed_ids=None,
+                    dirs=torch.zeros_like(self.gaussians.get_xyz[None, :, :]),
+                    sh_degree=self.gaussians.active_sh_degree,
+                ) if self.app_module is not None else None
+                self.gaussians.save_splat(splat_path, rgb=rgb)
+
+    def load_checkpoint(
+        self,
+        load_model=True,     # pylint: disable=W0613
+        load_optimizer=True,  # pylint: disable=W0613
+        load_scheduler=True,  # pylint: disable=W0613
+        load_meta_data=False  # pylint: disable=W0613
+    ) -> int:
+        load_model = True if self.config.appearance.use_app_embed else False
+        iter_start = super().load_checkpoint(
+            load_model, load_optimizer, False, load_meta_data=True
+        )
+
+        meta_path = os.path.join(self.output_path, "meta_non_splats.json")
+        if os.path.exists(meta_path):
+            with open(meta_path, "r", encoding="utf-8") as f:
+                non_splat_meta_data = json.load(f)
+            self.gaussians.active_sh_degree = non_splat_meta_data["active_sh_degree"]
+
+        meta_data = self.state_dicts["meta_data"]
+        self.spatial_lr_scale = meta_data["spatial_lr_scale"]  # pylint: disable=W0201
+
+        if self.config.compression.get("enabled", False):
+            checkpoint_dir = os.path.join(
+                self.config.dataset.output_dir, self.config.expname
+            )
+            json_path = os.path.join(checkpoint_dir, "meta.json")
+            if os.path.exists(json_path):
+                self.gaussians.decompress(checkpoint_dir)
+        else:
+            ckpt_ply_dir = os.path.join(
+                self.config.dataset.output_dir, self.config.expname, 'splats'
+            )
+            if os.path.exists(ckpt_ply_dir):
+                ply_path = os.path.join(ckpt_ply_dir, f"ckpt_splat_{iter_start}.ply")
+                self.gaussians.load_ply(ply_path, optimizable=True)
+
+        return iter_start
+
+    @torch.no_grad()
+    def validate(self):
+        if self.config.appearance.use_app_embed:
+            self.evaluator.app_module.color_head.load_state_dict(
+                self.app_module.color_head.state_dict()
+            )
+        return super().validate()

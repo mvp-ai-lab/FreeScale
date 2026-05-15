@@ -1,0 +1,13 @@
+pyproject.toml
+setup.py
+./__init__.py
+./setup.py
+/mnt/data_4/yuchen/Projects/freescale/gaussian_splatting/submodules/FasterGSCudaBackend/adam/src/adam.cu
+/mnt/data_4/yuchen/Projects/freescale/gaussian_splatting/submodules/FasterGSCudaBackend/torch_bindings/bindings.cpp
+FasterGSCudaBackend.egg-info/PKG-INFO
+FasterGSCudaBackend.egg-info/SOURCES.txt
+FasterGSCudaBackend.egg-info/dependency_links.txt
+FasterGSCudaBackend.egg-info/not-zip-safe
+FasterGSCudaBackend.egg-info/top_level.txt
+torch_bindings/__init__.py
+torch_bindings/adam.py

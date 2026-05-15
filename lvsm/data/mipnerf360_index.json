@@ -1,0 +1,34 @@
+{
+    "bicycle":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "bonsai":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "counter":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "flowers":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "garden":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "room":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "stump":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    },
+    "treehill":{
+        "context": [20,18,21,23],
+        "target": [19,24]
+    }
+}
