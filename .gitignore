@@ -1,0 +1,16 @@
+.vscode
+gaussian_splatting/submodules/fused-ssim/build
+gaussian_splatting/submodules/fused-ssim/fused_ssim.egg-info
+gaussian_splatting/submodules/MortonEncoding/build
+gaussian_splatting/submodules/MortonEncoding/MortonEncoding.egg-info
+submodules/FasterGSCudaBackend/build
+submodules/FasterGSCudaBackend/FasterGSCudaBackend.egg-info
+
+gaussian_splatting/webui/build
+gaussian_splatting/webui/database
+gaussian_splatting/webui/node_modules
+gaussian_splatting/webui/package-lock.json
+__pycache__/
+.DS_Store
+LICENSE
+
