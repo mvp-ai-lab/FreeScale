@@ -1,0 +1,132 @@
+neural_field_type: gs
+expname: ${neural_field_type}_${task}_${dataset.name}_${dataset.scene}
+task: nvs
+seed: 42
+
+dataset:
+  name: DL3DV10K
+  root_dir: /data/dl3dv/DL3DV-10K
+  scene: 
+  train_split: train
+  val_split: val
+  data_split_json: ""
+  factor: 4
+  val_interval: 0.3
+  apply_mask: false
+  multi_blocks: false
+  num_blocks: 1
+  scale: false
+  rotate: false
+  load_depth: false
+  use_manhattan_world: false
+  batch_over_images: false
+  model_folder: sparse
+  init_ply_type: sparse
+  output_dir: exps/dl3dv_bench/out_3dgs
+
+trainer:
+  max_iterations: 30000
+  ckpt_path: ""
+  no_load_opt: false
+  no_load_scheduler: false
+  enable_tensorboard: true
+  n_tensorboard: 200
+  n_validation: 5000
+  n_checkpoint: ${trainer.max_iterations}
+  distributed: false
+  excluded_gpus: []
+  num_workers: 16
+  local_rank: 0
+  vram_cache_size: 200   # Number of images to keep in GPU memory
+  ram_cache_size: 500   # Number of images to keep in CPU memory
+  export_splat: false
+
+evaluator:
+  correct_color: false
+
+compression:
+  enabled: true
+  mode: "quantization" # "quantization" | "pruning"
+  n_bits: 8
+  prune_ratio: 0.5
+  prune_iterations: [15000, 25000]
+
+prune:
+  iterations: [] # [16000, 24000]
+  v_pow: 0.1
+  prune_decay: 0.6
+  prune_percent: 0.5
+
+optimizer:
+  lr:
+    # Gaussian centers related.
+    position_init: 0.00016
+    position_final: 0.0000016
+    position_delay_mult: 0.01
+    position_max_iterations: ${trainer.max_iterations}
+    # Exposure related.
+    exposure_lr_init: 0.001
+    exposure_lr_final: 0.0001
+    exposure_lr_delay_steps: 5000
+    exposure_lr_delay_mult: 0.001
+    exposure_max_iterations: ${trainer.max_iterations}
+    # Other 3D GS properties.
+    feature: 0.0025
+    opacity: 0.025
+    scaling: 0.005
+    quaternion: 0.001
+  lr_app:
+    # Decoupled appearance encoding.
+    decouple_app_embed: 0.001
+    app_module: 0.001
+    app_embed: 0.0025
+    colors: 0.0025
+  lr_depth:
+    l1_weight_init: 1.0
+    l1_weight_final: 0.01
+  # lr_pose:
+  #   rot: 5e-5
+  #   trans: 5e-5
+
+geometry:
+  percent_dense: 0.01
+  depth_threshold: 0
+  coarse-to-fine: false
+  sample_more_high_resolution: false
+  densify_strategy: mcmc # "default" | "mcmc"
+  densify_start_iter: 500
+  densify_end_iter: 25000 # 15000(default) | 25000(mcmc)
+  opt_pose_start_iter: 3000
+  densification_interval: 100
+  opacity_reset_interval: 3000
+  min_opacity: 0.005
+  densify_grad_threshold: 0.0002
+  # MCMC strategy parameters.
+  init_opacity: 0.5
+  init_scale: 0.1
+  cap_max: 1500000
+  noise_lr: 5e5
+
+texture:
+  max_sh_degree: 3
+  anti_aliasing: false
+
+appearance:
+  input_dim: 2000
+  use_decoupled_app_embed: false
+  use_trained_exposure: true 
+  use_app_embed: true 
+  app_feat_dim: 32
+  app_embed_dim: 16
+  num_sky_gaussians: 0 # 50000
+
+pipeline:
+  convert_SHs_python: false
+  compute_cov3D_python: false
+  debug: false
+
+loss:
+  lambda_dssim: 0.2
+  lambda_scale: 0.01
+  lambda_mask: 0
+  lambda_opacity: 0.01

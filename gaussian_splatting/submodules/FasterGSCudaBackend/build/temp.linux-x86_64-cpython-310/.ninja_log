@@ -1,0 +1,3 @@
+# ninja log v7
+0	11495	1778255377811510254	/mnt/data_4/yuchen/Projects/freescale/gaussian_splatting/submodules/FasterGSCudaBackend/build/temp.linux-x86_64-cpython-310/mnt/data_4/yuchen/Projects/freescale/gaussian_splatting/submodules/FasterGSCudaBackend/torch_bindings/bindings.o	c79c310928efd791
+0	27292	1778255377811510254	/mnt/data_4/yuchen/Projects/freescale/gaussian_splatting/submodules/FasterGSCudaBackend/build/temp.linux-x86_64-cpython-310/mnt/data_4/yuchen/Projects/freescale/gaussian_splatting/submodules/FasterGSCudaBackend/adam/src/adam.o	19bcbebe67fa35c7

@@ -1,0 +1,90 @@
+model:
+  class_name: model.LVSM_scene_decoder_only.Images2LatentScene
+
+  image_tokenizer:
+    image_size: 256
+    patch_size: 8
+    in_channels: 9  # 3 RGB + 3 direction + 3 Reference
+
+  target_pose_tokenizer:
+    image_size: 256
+    patch_size: 8
+    in_channels: 6  # 3 direction + 3 Reference
+  transformer:
+    d: 768
+    d_head: 64
+    n_layer: 24
+    special_init: true
+    depth_init: true
+    use_qk_norm: true
+
+training:
+  mode: static # [static S, dynamic D]
+  amp_dtype: fp16
+  wandb:
+    exp_name: LVSM_scene_decoder_only
+    log_every: 50
+    project: FVGen
+    api_key_path: api_keys.yaml
+    mode: disabled # [online, offline, disabled]
+  batch_size_per_gpu: 8
+  beta1: 0.9
+  beta2: 0.95
+  allowed_gradnorm_factor: 5
+  center_crop: true
+  scene_scale_factor: 1.35
+  checkpoint_dir: model_zoo/scene_decoder_only_256.pt
+  checkpoint_every: 2000
+  dataset_name: data.dataset_scene.RE10KDataset
+  dataset_path: realestate-10k/dataset/subtrain_lvsm/subtrain/full_list.txt
+  view_selector:  # dl3dv
+    # frame_stride: 4 # better to aligned with the dynamic stage?
+    min_frames_num: 81 # at least 3s video?
+    min_frame_dist: 64
+    max_frame_dist: 96
+    curriculum_iter: 3000
+    curriculum_start_min_frame_dist: 48
+    curriculum_start_max_frame_dist: 64
+
+  grad_accum_steps: 1
+  grad_checkpoint_every: 1
+  grad_clip_norm: 1.0
+
+  l2_loss_weight: 1.0
+  lpips_loss_weight: 0.0
+  perceptual_loss_weight: 0.5
+
+  lr: 0.0004
+  train_steps: 100000
+
+
+  num_input_views: 2
+  num_target_views: 6
+  num_threads: 8
+  num_workers: 4
+  prefetch_factor: 32
+  print_every: 20
+
+  square_crop: true
+  target_has_input: true
+  use_amp: true
+  use_rel_pose: false
+  use_tf32: true
+
+  warmup: 3000
+  weight_decay: 0.05
+
+
+# inference / evaluation
+inference:
+  if_inference: False
+  compute_metrics: False
+  view_idx_file_path: ./data/evaluation_index_re10k.json
+  render_video: True
+  render_video_config:
+    traj_type: interpolate
+    num_frames: 90
+    loop_video: False
+    order_poses: True
+
+  

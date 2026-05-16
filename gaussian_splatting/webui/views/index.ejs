@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<!-- saved from url=(0022) -->
+<html lang="en-us"
+  class=" js flexbox flexboxlegacy canvas canvastext webgl no-touch geolocation postmessage no-websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers no-applicationcache svg inlinesvg smil svgclippaths"><head><meta
+      http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="generator" content="Hugo 0.68.3">
+    <script src="./static/js/livereload.js" data-no-instant defer></script>
+
+    <meta property="og:title" content="DOGS">
+    <meta property="og:description" content>
+    <meta property="og:type" content="website">
+    <meta property="og:url" content>
+
+    <meta name="description"
+      content="Hardcoded description; the author should update :)">
+    <meta name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>DOGS</title>
+
+    <link rel="icon" type="image/png" href="./static/images/dogs.png">
+    <link href="./static/css/css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="./static/css/style.css">
+    <link rel="stylesheet" type="text/css" href="./static/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
+
+
+  </head>
+
+  <body style="overflow: visible;" data-new-gr-c-s-check-loaded="14.1149.0"
+    data-gr-ext-installed>
+
+    <div id="preloader" style="display: none;">
+      <div id="status" style="display: none;"></div>
+    </div>
+
+    <section class="is-default is-bold">
+
+      <nav class="navbar is-fresh is-transparent no-shadow" role="navigation"
+        aria-label="main navigation">
+        <div class="container">
+          <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+              <img src="./static/images/dogs.png">
+            </a>
+            <a class="navbar-item is-hidden-desktop is-hidden-tablet">
+              <div id="menu-icon-wrapper" class="menu-icon-wrapper"
+                style="visibility: visible;">
+                <svg width="1000px" height="1000px">
+                  <path class="path1"
+                    d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                  <path class="path2" d="M 300 500 L 700 500"></path>
+                  <path class="path3"
+                    d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                </svg>
+                <button id="menu-icon-trigger"
+                  class="menu-icon-trigger"></button>
+              </div>
+            </a>
+
+            <a role="button" class="navbar-burger" aria-label="menu"
+              aria-expanded="false" data-target="navbar-menu">
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+            </a>
+          </div>
+
+          <div id="navbar-menu" class="navbar-menu is-static">
+
+            <div class="navbar-start">
+              <% if (!user) { %>
+              <a href="login" class="navbar-item is-secondary">
+                Log in
+              </a>
+              <a href="/signup" class="navbar-item">
+                <span class="button signup-button rounded secondary-btn raised">
+                  Sign up
+                </span>
+              </a>
+              <% } %>
+            </div>
+
+            <% if (user) { %>
+              <div class="navbar-end">
+                <a href class="navbar-item">
+                  <span class="icon"><i class="fa fa-user" style="padding-left: 5px;"><%= user.username %></i></span>
+                </a>
+                <a class="navbar-item is-hidden-mobile">
+                  <div id="menu-icon-wrapper" class="menu-icon-wrapper"
+                    style="visibility: visible;">
+                    <svg width="1000px" height="1000px">
+                      <path class="path1"
+                        d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                      <path class="path2" d="M 300 500 L 700 500"></path>
+                      <path class="path3"
+                        d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                    </svg>
+                    <button id="menu-icon-trigger"
+                      class="menu-icon-trigger"></button>
+                  </div>
+                </a>
+              </div>
+            <% } %>
+
+          </div>
+        </div>
+      </nav>
+
+      <nav id="navbar-clone" class="navbar is-fresh is-transparent"
+        role="navigation" aria-label="main navigation">
+        <div class="container">
+          <div class="navbar-brand">
+            <a class="navbar-item" href="/">
+              <img src="./static/images/dogs.png" alt>
+            </a>
+            <!-- <a class="navbar-item is-hidden-desktop is-hidden-tablet">
+              <div id="menu-icon-wrapper" class="menu-icon-wrapper"
+                style="visibility: visible;">
+                <svg width="1000px" height="1000px">
+                  <path class="path1"
+                    d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                  <path class="path2" d="M 300 500 L 700 500"></path>
+                  <path class="path3"
+                    d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                </svg>
+                <button id="menu-icon-trigger"
+                  class="menu-icon-trigger"></button>
+              </div>
+            </a> -->
+
+            <a role="button" class="navbar-burger" aria-label="menu"
+              aria-expanded="false" data-target="cloned-navbar-menu">
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+              <span aria-hidden="true"></span>
+            </a>
+          </div>
+
+          <div id="cloned-navbar-menu" class="navbar-menu is-fixed">
+            <div class="navbar-start">
+              <% if (!user) { %>
+              <a href class="navbar-item is-secondary">
+                Log in
+              </a>
+              <a href class="navbar-item">
+                <span class="button signup-button rounded secondary-btn raised">
+                  Sign up
+                </span>
+              </a>
+              <% } %>
+            </div>
+
+            <% if (user) { %>
+            <div class="navbar-end">
+              <a href class="navbar-item">
+                <span class="icon"><i class="fa fa-user" style="padding-left: 5px;"><%= user.username %></i></span>
+              </a>
+              <!-- <a class="navbar-item is-hidden-mobile">
+                <div id="cloned-menu-icon-wrapper" class="menu-icon-wrapper"
+                  style="visibility: visible;">
+                  <svg width="1000px" height="1000px">
+                    <path class="path1"
+                      d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                    <path class="path2" d="M 300 500 L 700 500"></path>
+                    <path class="path3"
+                      d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                  </svg>
+                  <button id="cloned-menu-icon-trigger"
+                    class="menu-icon-trigger"></button>
+                </div>
+              </a> -->
+            </div>
+          </div>
+          <% } %>
+        </div>
+      </nav>
+    </section>
+
+    <section class="section section-feature-grey is-medium" id="section1">
+      <div class="container">
+        <div class="title-wrapper has-text-centered">
+          <h2 class="title is-2">Online Models</h2>
+          <h3 class="subtitle is-5 is-muted">visit the physical world
+            online</h3>
+          <div class="divider is-centered"></div>
+        </div>
+
+        <div class="content-wrapper">
+          <% var index = 0; %>
+          <% const num_models = models.length; %>
+          <% for (index = 0; index < num_models; index +=4) { %>
+            <div class="columns">
+              <% var j = 0; %>
+              <% for (j = 0; j < 4 && index+j < num_models; j++) { %>
+              <% var model_path = models[index+j].path; %>
+              <% var model_name = model_path.substring(model_path.lastIndexOf('/') + 1); %>
+              <div class="column is-one-quater">
+                <div 
+                  class="feature-card is-bordered has-text-centered revealOnScroll delay-1"
+                  data-animation="fadeInLeft">
+                  <div class="card-title">
+                    <h4><%= models[index+j].title %></h4>
+                  </div> <!--end card-title-->
+                  <div class="card-icon">
+                    <img src="<%= models[index+j].thumb_image_path %>" class="demo-scene-panel-image">
+                  </div> <!--end card-icon-->
+                  <div class="card-action">
+                    <a class="button btn-align-md accent-btn raised" href="/viewer:<%= model_name %>">
+                      View Model
+                    </a>
+                  </div> <!--end card-action-->
+                </div> <!--end feature-card-->
+              </div> <!--end column-one-quarter-->
+              <% } %>
+            </div>
+          <% } %>
+        </div> <!--end content-wrapper -->
+
+      </div>
+    </section>
+
+
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <img src="./static/images/dogs.png">
+        <a class="sidebar-close" href="javascript:void(0);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="feather feather-x"><line x1="18" y1="6" x2="6"
+              y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </a>
+      </div>
+      <div class="inner">
+        <ul class="sidebar-menu">
+          <li class="have-children">
+            <a href="#">
+              <span class="fa fa-user"></span>
+              User
+            </a>
+            <ul>
+              <li>
+                <a href>
+                  Profile
+                </a>
+              </li>
+              <li>
+                <a href>
+                  Account
+                </a>
+              </li>
+              <li>
+                <a href>
+                  Settings
+                </a>
+              </li>
+              <li>
+                <form action="/logout" method="post">
+                  <button class="logout" type="submit">Sign out</button>
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                </form>
+              </li>
+            </ul>
+          </li>
+          <li class="have-children">
+            <a href="#">
+              <span class="fa fa-envelope"></span>
+              Messages
+            </a>
+            <ul>
+              <li>
+                <a href>
+                  Inbox
+                </a>
+              </li>
+              <li>
+                <a href>
+                  Compose
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="have-children">
+            <a href="#">
+              <span class="fa fa-image"></span>
+              Models
+            </a>
+            <ul>
+              <li>
+                <a href="/upload">
+                  Upload
+                </a>
+              </li>
+              <li>
+                <a href="/delete">
+                  Delete
+                </a>
+              </li>
+            </ul>
+          </li>
+          <li class="have-children">
+            <a href="#">
+              <span class="fa fa-cog"></span>
+              Settings
+            </a>
+            <ul>
+              <li>
+                <a href>
+                  User settings
+                </a>
+              </li>
+              <li>
+                <a href>
+                  App settings
+                </a>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="backtotop"><a href="#"></a></div>
+
+    <script src="./static/js/jquery.min.js"></script>
+    <script src="./static/js/feather-icons"></script>
+    <script src="./static/js/fresh.js"></script>
+    <script src="./static/js/jquery.panelslider.min.js"></script>
+    <script src="./static/js/modernizr.min.js"></script>
+
+  </body>
+  <grammarly-desktop-integration data-grammarly-shadow-root="true">
+    <template shadowrootmode="open">
+      <style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style>
+      <div aria-label="grammarly-integration" role="group" tabindex="-1"
+        class="grammarly-desktop-integration"
+        data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}">
+      </div>
+    </template>
+  </grammarly-desktop-integration>
+
+</html>

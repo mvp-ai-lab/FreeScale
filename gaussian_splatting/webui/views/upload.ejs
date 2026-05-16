@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<!-- saved from url=(0022) -->
+<html lang="en-us"
+    class=" js flexbox flexboxlegacy canvas canvastext webgl no-touch geolocation postmessage no-websqldatabase indexeddb hashchange history draganddrop websockets rgba hsla multiplebgs backgroundsize borderimage borderradius boxshadow textshadow opacity cssanimations csscolumns cssgradients cssreflections csstransforms csstransforms3d csstransitions fontface generatedcontent video audio localstorage sessionstorage webworkers no-applicationcache svg inlinesvg smil svgclippaths"><head><meta
+            http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="generator" content="Hugo 0.68.3">
+        <script src="./static/js/livereload.js" data-no-instant defer></script>
+
+        <meta property="og:title" content="DOGS">
+        <meta property="og:description" content>
+        <meta property="og:type" content="website">
+        <meta property="og:url" content>
+
+        <meta name="description"
+            content="Hardcoded description; the author should update :)">
+        <meta name="viewport"
+            content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>DOGS</title>
+
+        <link rel="icon" type="image/png"
+            href="./static/images/dogs.png">
+        <link href="./static/css/css" rel="stylesheet">
+        <link rel="stylesheet" type="text/css" href="./static/css/style.css">
+        <link rel="stylesheet" type="text/css"
+            href="./static/fonts/font-awesome-4.7.0/css/font-awesome.min.css">
+
+        <style type="text/css">
+        .input-file-container {
+            position: relative;
+            width: 225px;
+        } 
+        .input-file-trigger {
+            display: block;
+            margin-top: 20px;
+            padding: 20px 45px;
+            background: #4FC1EA;
+            color: white;
+            font-size: 1em;
+            transition: all .4s;
+            cursor: pointer;
+        }
+        .input-file {
+            position: absolute;
+            top: 0; left: 0;
+            width: 225px;
+            opacity: 0;
+            padding: 14px 0;
+            cursor: pointer;
+        }
+        .input-file:hover + .input-file-trigger,
+        .input-file:focus + .input-file-trigger,
+        .input-file-trigger:hover,
+        .input-file-trigger:focus {
+            background: #09769e;
+        }
+
+        #FileUpload {
+            display: flex;
+            justify-content: center;
+        }
+        .wrapper {
+            margin: 30px;
+            padding: 10px;
+            box-shadow: 0 19px 38px rgba(0,0,0,0.30), 0 15px 12px rgba(0,0,0,0.22);
+            border-radius: 10px;
+            background-color: white;
+            width: 600px;
+        }
+
+        /* === Upload Box === */
+        .upload {
+            margin: 10px;
+            height: 165px;
+            border: 8px dashed #4FC1EA;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 5px;
+        }
+        .upload p {
+            margin-top: 12px;
+            line-height: 0;
+            font-size: 22px;
+            letter-spacing: 1.5px;
+        }
+        .upload__button {
+            background-color: #4FC1EA;
+            border-radius: 10px;
+            padding: 0px 8px 0px 10px;
+        }
+        .upload__button:hover {
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        /* === Uploaded Files === */
+        .uploaded {
+            width: 375px;
+            margin: 10px;
+            background-color: #4FC1EA;
+            border-color: #4FC1EA;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        .file {
+            display: flex;
+            flex-direction: column;
+        }
+        .file__name {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: baseline;
+            width: 300px;
+            line-height: 0;
+            color: white;
+            font-size: 18px;
+            letter-spacing: 1.5px;
+        }
+        .fa-times:hover {
+            cursor: pointer;
+            opacity: 0.8;
+        }
+        .fa-file {
+            padding: 15px;
+            font-size: 30px;
+            color: white;
+        }
+        .fa-image {
+            padding: 15px;
+            font-size: 30px;
+            color: white;;
+        }
+
+    </style>
+
+        <script type="importmap">
+  {
+      "imports": {
+          "three": "./static/lib/three.module.js",
+          "gaussian-splats-3d": "./static/lib/gaussian-splats-3d.module.js"
+      }
+  }
+    </script>
+
+        <script>
+  let currentAlphaRemovalThreshold;
+  let currentCameraUpArray;
+  let currentCameraPositionArray;
+  let currentCameraLookAtArray;
+  </script>
+
+        <script type="module">
+  import * as GaussianSplats3D from 'gaussian-splats-3d';
+
+  function convertPLYToSplatBuffer(plyBuffer, compressionLevel, alphaRemovalThreshold, blockSize, bucketSize) {
+    const plyParser = new GaussianSplats3D.PlyParser(plyBuffer);
+    return plyParser.parseToSplatBuffer(compressionLevel, alphaRemovalThreshold, blockSize, bucketSize);
+  }
+
+  function convertStandardSplatToSplatBuffer(bufferData, compressionLevel, alphaRemovalThreshold, blockSize, bucketSize){
+    const splatArray = GaussianSplats3D.SplatLoader.parseStandardSplatToUncompressedSplatArray(bufferData);
+    const splatCompressor = new GaussianSplats3D.SplatCompressor(compressionLevel, alphaRemovalThreshold, blockSize, bucketSize);
+    return splatCompressor.uncompressedSplatArrayToSplatBuffer(splatArray);
+  }
+
+  function isPlyFile(fileName) {
+    return fileName.toLowerCase().trim().endsWith('.ply');
+  }
+
+  function fileBufferToSplatBuffer(fileBufferData, isPly, isStandardSplat, compressionLevel, alphaRemovalThreshold, blockSize, bucketSize) {
+    let splatBuffer;
+    if (isPly) {
+      splatBuffer = convertPLYToSplatBuffer(fileBufferData, compressionLevel, alphaRemovalThreshold, blockSize, bucketSize);
+    } else {
+      if (isStandardSplat) {
+        splatBuffer = convertStandardSplatToSplatBuffer(fileBufferData, compressionLevel, alphaRemovalThreshold, blockSize, bucketSize);
+      } else {
+        splatBuffer = new GaussianSplats3D.SplatBuffer(fileBufferData);
+      }
+    }
+    return splatBuffer;
+  }
+
+  window.onCompressionLevelChange = function(arg) {
+    const compressionLevel = parseInt(document.getElementById("compressionLevel").value);
+    if (isNaN(compressionLevel) || compressionLevel < 0 || compressionLevel > 1) {
+      return;
+    }
+
+    for (let i = 1; i <= 3; i++) {
+      const element = document.getElementById('advancedCompressionRow' + i);
+      if (compressionLevel === 0) {
+        element.style.display = 'none';
+      } else {
+        element.style.display = '';
+      }
+    }
+  }
+
+  window.onFileChange = function(arg, fileNameLabelID) {
+    const fileNameLabel = document.getElementById(fileNameLabelID);
+    const url = arg.value;
+    let lastForwardSlash = url.lastIndexOf('/');
+    let lastBackwardSlash = url.lastIndexOf('\\');
+    const lastSlash = Math.max(lastForwardSlash, lastBackwardSlash);
+    fileNameLabel.innerHTML = url.substring(lastSlash + 1);
+  }
+
+  let conversionInProgress = false;
+  window.convertPlyFile = function() {
+    if (conversionInProgress) return;
+    const conversionFile = document.getElementById("conversionFile");
+    const compressionLevel = parseInt(document.getElementById("compressionLevel").value);
+    const alphaRemovalThreshold = parseInt(document.getElementById("alphaRemovalThreshold").value);
+    const blockSize = parseFloat(document.getElementById("blockSize").value);
+    const bucketSize = parseInt(document.getElementById("bucketSize").value);
+
+    if (isNaN(compressionLevel) || compressionLevel < 0 || compressionLevel > 1) {
+      setConversionError("Invalid compression level.");
+      return;
+    } else if (isNaN(alphaRemovalThreshold) || alphaRemovalThreshold <0 || alphaRemovalThreshold > 255) {
+      setConversionError("Invalid alpha remval threshold.");
+      return;
+    } else if (isNaN(blockSize) || blockSize < 0.1) {
+      setConversionError("Invalid block size.");
+      return;
+    } else if (isNaN(bucketSize) || bucketSize < 2 || bucketSize > 65536) {
+      setConversionError("Invalid bucket size.");
+      return;
+    } else if (!conversionFile.files[0]) {
+      setConversionError("Please choose a file to convert.");
+      return;
+    }
+
+    setConversionError("");
+    const convertButton = document.getElementById("convertButton");
+
+    const conversionDone = (error) => {
+      if (error) {
+        console.error(error);
+        setConversionError("Could not convert file.");
+      } else {
+        setConversionStatus("Conversion complete!");
+        setConversionLoadingIconVisibility(false);
+        setConversionCheckIconVisibility(true);
+      }
+      convertButton.disabled = false;
+      conversionInProgress = false;
+    }
+
+    try {
+      const fileReader = new FileReader();
+      fileReader.onload = function(){
+        convertButton.disabled = true;
+        setConversionStatus("Parsing file...");
+        setConversionLoadingIconVisibility(true);
+        setConversionCheckIconVisibility(false);
+        const conversionFileName = conversionFile.files[0].name;
+        const isPly = isPlyFile(conversionFileName);
+        const isStandardSplat = GaussianSplats3D.SplatLoader.isStandardSplatFormat(conversionFileName);
+        window.setTimeout(() => {
+          try {
+            const splatBuffer = fileBufferToSplatBuffer(fileReader.result, isPly, isStandardSplat, compressionLevel,
+                                                        alphaRemovalThreshold, blockSize, bucketSize);
+            new GaussianSplats3D.SplatLoader(splatBuffer).downloadFile('converted_file.ksplat');
+            conversionDone();
+          } catch (e) {
+            conversionDone(e);
+          }
+        }, 100);
+      }
+      conversionInProgress = true;
+      setConversionStatus("Loading file...");
+      setConversionLoadingIconVisibility(true);
+      fileReader.readAsArrayBuffer(conversionFile.files[0]);
+    } catch (e) {
+      conversionDone(e);
+    }
+  }
+
+  function setConversionError(msg) {
+    setConversionLoadingIconVisibility(false);
+    setConversionCheckIconVisibility(false);
+    document.getElementById("conversionStatus").innerHTML = "";
+    document.getElementById("conversionError").innerHTML = msg;
+  }
+
+  function setConversionStatus(msg) {
+    document.getElementById("conversionError").innerHTML = "";
+    document.getElementById("conversionStatus").innerHTML = msg;
+  }
+
+  function setConversionLoadingIconVisibility(visible) {
+    document.getElementById('conversion-loading-icon').style.display = visible ? 'block' : 'none';
+  }
+
+  function setConversionCheckIconVisibility(visible) {
+    document.getElementById('check-icon').style.display = visible ? 'block' : 'none';
+  }
+
+  window.viewSplat = function() {
+
+    const viewFile = document.getElementById("viewFile");
+    const alphaRemovalThreshold = parseInt(document.getElementById("alphaRemovalThresholdView").value);
+
+    let cameraUpArray = document.getElementById("cameraUp").value;
+    let cameraPositionArray = document.getElementById("cameraPosition").value;
+    let cameraLookAtArray = document.getElementById("cameraLookAt").value;
+
+    cameraUpArray = cameraUpArray.split(',');
+    cameraPositionArray = cameraPositionArray.split(',');
+    cameraLookAtArray = cameraLookAtArray.split(',');
+
+    if (!viewFile.files[0]) {
+      setViewError("Please choose a file to view.");
+      return;
+    } else if (isNaN(alphaRemovalThreshold) || alphaRemovalThreshold < 0 || alphaRemovalThreshold > 255) {
+      setViewError("Invalid alpha remval threshold.");
+      return;
+    }
+
+    if (cameraUpArray.length !== 3) {
+      setViewError("Camera up must contain 3 elements.");
+      return;
+    }
+
+    if (cameraPositionArray.length !== 3) {
+      setViewError("Camera position must contain 3 elements.");
+      return;
+    }
+
+    if (cameraLookAtArray.length !== 3) {
+      setViewError("Camera look-at must contain 3 elements.");
+      return;
+    }
+
+    for (let i = 0; i < 3; i++) {
+      cameraUpArray[i] = parseFloat(cameraUpArray[i]);
+      cameraPositionArray[i] = parseFloat(cameraPositionArray[i]);
+      cameraLookAtArray[i] = parseFloat(cameraLookAtArray[i]);
+
+      if (isNaN(cameraUpArray[i])) {
+        setViewError("Invalid camera up.");
+        return;
+      }
+
+      if (isNaN(cameraPositionArray[i])) {
+        setViewError("Invalid camera position.");
+        return;
+      }
+
+      if (isNaN(cameraLookAtArray[i])) {
+        setViewError("Invalid camera look-at.");
+        return;
+      }
+    }
+
+    const viewFileName = viewFile.files[0].name;
+    const isPly = isPlyFile(viewFileName);
+    const isStandardSplat = GaussianSplats3D.SplatLoader.isStandardSplatFormat(viewFileName);
+
+    currentAlphaRemovalThreshold = alphaRemovalThreshold;
+    currentCameraUpArray = cameraUpArray;
+    currentCameraPositionArray = cameraPositionArray;
+    currentCameraLookAtArray = cameraLookAtArray;
+    try {
+      const fileReader = new FileReader();
+      fileReader.onload = function(){
+        try {
+         runViewer(fileReader.result, isPly, isStandardSplat, alphaRemovalThreshold, cameraUpArray, cameraPositionArray, cameraLookAtArray);
+        } catch (e) {
+          setViewError("Could not view scene.");
+        }
+      }
+      setViewStatus("Loading scene...");
+      fileReader.readAsArrayBuffer(viewFile.files[0]);
+    } catch (e) {
+      console.error(e);
+      setViewError("Could not view scene.");
+    }
+  }
+
+  function setViewError(msg) {
+    setViewLoadingIconVisibility(false);
+    document.getElementById("viewStatus").innerHTML = "";
+    document.getElementById("viewError").innerHTML = msg;
+  }
+
+  function setViewStatus(msg) {
+    setViewLoadingIconVisibility(true);
+    document.getElementById("viewError").innerHTML = "";
+    document.getElementById("viewStatus").innerHTML = msg;
+  }
+
+  function setViewLoadingIconVisibility(visible) {
+    document.getElementById('view-loading-icon').style.display = visible ? 'block' : 'none';
+  }
+
+  window.addEventListener("popstate", (event) => {
+    if (currentAlphaRemovalThreshold !== undefined) {
+      window.location = 'index.html?art=' + currentAlphaRemovalThreshold + '&cu=' + currentCameraUpArray + "&cp=" + currentCameraPositionArray + "&cla=" + currentCameraLookAtArray;
+    } else {
+      window.location = 'index.html';
+    }
+  });
+
+  function runViewer(splatBufferData, isPly, isStandardSplat, alphaRemovalThreshold, cameraUpArray, cameraPositionArray, cameraLookAtArray) {
+    const viewerOptions = {
+      'cameraUp': cameraUpArray,
+      'initialCameraPosition': cameraPositionArray,
+      'initialCameraLookAt': cameraLookAtArray,
+      'halfPrecisionCovariancesOnGPU': true,
+    };
+    const splatBufferOptions = {
+      'splatAlphaRemovalThreshold': alphaRemovalThreshold
+    };
+
+    const splatBuffer = fileBufferToSplatBuffer(splatBufferData, isPly, isStandardSplat, 0, alphaRemovalThreshold);
+    document.getElementById("demo-content").style.display = 'none';
+    document.body.style.backgroundColor = "#000000";
+    history.pushState("ViewSplat", null);
+    const viewer = new GaussianSplats3D.Viewer(viewerOptions);
+    viewer.addSplatBuffers([splatBuffer], [splatBufferOptions])
+    .then(() => {
+        viewer.start();
+    });
+  }
+
+  </script>
+
+    </head>
+
+    <body style="overflow: visible;" data-new-gr-c-s-check-loaded="14.1149.0"
+        data-gr-ext-installed>
+
+        <div id="preloader" style="display: none;">
+            <div id="status" style="display: none;"></div>
+        </div>
+
+        <section class="hero is-fullheight is-default is-bold">
+
+            <nav class="navbar is-fresh is-transparent no-shadow"
+                role="navigation"
+                aria-label="main navigation">
+                <div class="container">
+                    <div class="navbar-brand">
+                        <a class="navbar-item" href="/">
+                            <img src="./static/images/dogs.png" alt>
+                        </a>
+                        <a
+                            class="navbar-item is-hidden-desktop is-hidden-tablet">
+                            <div id="menu-icon-wrapper"
+                                class="menu-icon-wrapper"
+                                style="visibility: visible;">
+                                <svg width="1000px" height="1000px">
+                                    <path class="path1"
+                                        d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                                    <path class="path2"
+                                        d="M 300 500 L 700 500"></path>
+                                    <path class="path3"
+                                        d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                                </svg>
+                                <button id="menu-icon-trigger"
+                                    class="menu-icon-trigger"></button>
+                            </div>
+                        </a>
+
+                        <a role="button" class="navbar-burger" aria-label="menu"
+                            aria-expanded="false" data-target="navbar-menu">
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                        </a>
+                    </div>
+
+                    <div id="navbar-menu" class="navbar-menu is-static">
+                        <div class="navbar-start">
+                            <% if (!user) { %>
+                            <a href="login" class="navbar-item is-secondary">
+                                Log in
+                            </a>
+                            <a href="/signup" class="navbar-item">
+                                <span
+                                    class="button signup-button rounded secondary-btn raised">
+                                    Sign up
+                                </span>
+                            </a>
+                            <% } %>
+                        </div>
+
+                        <% if (user) { %>
+                        <div class="navbar-end">
+                            <a href class="navbar-item">
+                                <span class="icon"><i class="fa fa-user"
+                                        style="padding-left: 5px;"><%=
+                                        user.username %></i></span>
+                            </a>
+                            <a class="navbar-item is-hidden-mobile">
+                                <div id="menu-icon-wrapper"
+                                    class="menu-icon-wrapper"
+                                    style="visibility: visible;">
+                                    <svg width="1000px" height="1000px">
+                                        <path class="path1"
+                                            d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                                        <path class="path2"
+                                            d="M 300 500 L 700 500"></path>
+                                        <path class="path3"
+                                            d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                                    </svg>
+                                    <button id="menu-icon-trigger"
+                                        class="menu-icon-trigger"></button>
+                                </div>
+                            </a>
+                        </div>
+                        <% } %>
+
+                    </div>
+                </div>
+            </nav>
+
+            <nav id="navbar-clone" class="navbar is-fresh is-transparent"
+                role="navigation" aria-label="main navigation">
+                <div class="container">
+                    <div class="navbar-brand">
+                        <a class="navbar-item" href="/">
+                            <img src="./static/images/dogs.png" alt>
+                        </a>
+                        <a
+                            class="navbar-item is-hidden-desktop is-hidden-tablet">
+                            <div id="menu-icon-wrapper"
+                                class="menu-icon-wrapper"
+                                style="visibility: visible;">
+                                <svg width="1000px" height="1000px">
+                                    <path class="path1"
+                                        d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                                    <path class="path2"
+                                        d="M 300 500 L 700 500"></path>
+                                    <path class="path3"
+                                        d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                                </svg>
+                                <button id="menu-icon-trigger"
+                                    class="menu-icon-trigger"></button>
+                            </div>
+                        </a>
+
+                        <a role="button" class="navbar-burger" aria-label="menu"
+                            aria-expanded="false"
+                            data-target="cloned-navbar-menu">
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                            <span aria-hidden="true"></span>
+                        </a>
+                    </div>
+
+                    <div id="cloned-navbar-menu" class="navbar-menu is-fixed">
+                        <div class="navbar-start">
+                            <% if (!user) { %>
+                            <a href class="navbar-item is-secondary">
+                                Log in
+                            </a>
+                            <a href class="navbar-item">
+                                <span
+                                    class="button signup-button rounded secondary-btn raised">
+                                    Sign up
+                                </span>
+                            </a>
+                            <% } %>
+                        </div>
+
+                        <% if (user) { %>
+                        <div class="navbar-end">
+                            <a href class="navbar-item">
+                                <span class="icon"><i class="fa fa-user"
+                                        style="padding-left: 5px;"><%=
+                                        user.username %></i></span>
+                            </a>
+                            <a class="navbar-item is-hidden-mobile">
+                                <div id="cloned-menu-icon-wrapper"
+                                    class="menu-icon-wrapper"
+                                    style="visibility: visible;">
+                                    <svg width="1000px" height="1000px">
+                                        <path class="path1"
+                                            d="M 300 400 L 700 400 C 900 400 900 750 600 850 A 400 400 0 0 1 200 200 L 800 800"></path>
+                                        <path class="path2"
+                                            d="M 300 500 L 700 500"></path>
+                                        <path class="path3"
+                                            d="M 700 600 L 300 600 C 100 600 100 200 400 150 A 400 380 0 1 1 200 800 L 800 200"></path>
+                                    </svg>
+                                    <button id="cloned-menu-icon-trigger"
+                                        class="menu-icon-trigger"></button>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+            </nav>
+
+            <div class="hero-body">
+                <div class="container">
+                    <div id="FileUpload">
+                        <div class="wrapper">
+                            <form action="/upload/?_csrf=<%=csrfToken%>"
+                                method="post" enctype="multipart/form-data" onsubmit="handleFormSubmission(event)">
+
+                                <div class="upload">
+                                    <p>Select a model file and an thumb image...
+                                        <input class="input-file" id="file" type="file" name="files" multiple="multiple">
+                                        <label tabindex="0" for="file" class="input-file-trigger">
+                                            Model + Thumb Image
+                                        </label>
+                                        <button
+                                            class="button cta is-large primary-btn raised is-clear"
+                                            style="background-color: #00efb7; border-color: #00efb7; margin-top: 10px"
+                                            type="submit">Upload</button>
+                                    </p>
+                                </div>
+                            </form>
+                            <script>
+                                function handleFormSubmission(event) {
+                                  event.preventDefault();
+                                  const form = event.target;
+                            
+                                  // Use Fetch API to submit the form
+                                  fetch(form.action, {
+                                    method: form.method,
+                                    body: new FormData(form),
+                                  })
+                                  .then(response => response.json())
+                                  .then(data => {
+                                    // Display a success alert
+                                    alert(data.message);
+                            
+                                    // Optionally, you can reset the form
+                                    form.reset();
+                                  })
+                                  .catch(error => console.error('Error:', error));
+                                }
+                              </script>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <img src="./static/images/dogs.png">
+                <a class="sidebar-close" href="javascript:void(0);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24"
+                        height="24"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="feather feather-x"><line x1="18" y1="6" x2="6"
+                            y2="18"></line><line x1="6" y1="6" x2="18"
+                            y2="18"></line></svg>
+                </a>
+            </div>
+            <div class="inner">
+                <ul class="sidebar-menu">
+                    <li class="have-children">
+                        <a href="#">
+                            <span class="fa fa-user"></span>
+                            User
+                        </a>
+                        <ul>
+                            <li>
+                                <a href>
+                                    Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a href>
+                                    Account
+                                </a>
+                            </li>
+                            <li>
+                                <a href>
+                                    Settings
+                                </a>
+                            </li>
+
+                        </ul>
+                    </li>
+                    <li class="have-children">
+                        <a href="#">
+                            <span class="fa fa-envelope"></span>
+                            Messages
+                        </a>
+                        <ul>
+                            <li>
+                                <a href>
+                                    Inbox
+                                </a>
+                            </li>
+                            <li>
+                                <a href>
+                                    Compose
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="have-children">
+                        <a href="#">
+                            <span class="fa fa-image"></span>
+                            Models
+                        </a>
+                        <ul>
+                            <li>
+                                <a href="/upload">
+                                  Upload
+                                </a>
+                            </li>
+                            <li>
+                                <a href="/delete">
+                                  Delete
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="have-children">
+                        <a href="#">
+                            <span class="fa fa-cog"></span>
+                            Settings
+                        </a>
+                        <ul>
+                            <li>
+                                <a href>
+                                    User settings
+                                </a>
+                            </li>
+                            <li>
+                                <a href>
+                                    App settings
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="backtotop"><a href="#"></a></div>
+
+        <script src="./static/js/jquery.min.js"></script>
+        <script src="./static/js/feather-icons"></script>
+        <script src="./static/js/fresh.js"></script>
+        <script src="./static/js/jquery.panelslider.min.js"></script>
+        <script src="./static/js/modernizr.min.js"></script>
+
+    </body>
+    <grammarly-desktop-integration data-grammarly-shadow-root="true">
+        <template shadowrootmode="open">
+            <style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style>
+            <div aria-label="grammarly-integration" role="group" tabindex="-1"
+                class="grammarly-desktop-integration"
+                data-content="{&quot;mode&quot;:&quot;full&quot;,&quot;isActive&quot;:true,&quot;isUserDisabled&quot;:false}">
+            </div>
+        </template>
+    </grammarly-desktop-integration>
+
+</html>
