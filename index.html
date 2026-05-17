@@ -103,71 +103,159 @@
             </div>
         </section>
 
-        <!-- Teaser Figure -->
-        <section class="glass-card">
-            <div class="section-header">
-                <div class="icon-wrapper"><i class="fas fa-chalkboard-user"></i></div>
-                <h3>Overview</h3>
-            </div>
-            <img class="teaser-img" src="./images/teaser.png" alt="FreeScale teaser">
-            <p style="margin-top: 0.5rem; font-size: 0.9rem; text-align: center; color: var(--text-secondary);">
-                <strong>FreeScale</strong> leverages reconstructed scene geometry to generate high-fidelity free-view
-                images with accurate poses. Training feed-forward models (e.g., LVSM) with 22% additional generated
-                views significantly boosts generalization to large camera motion (PSNR 18.75 → 21.45).
-            </p>
-        </section>
-
-        <!-- Abstract -->
-        <section class="glass-card" id="abstract">
-            <div class="section-header">
-                <div class="icon-wrapper"><i class="fas fa-align-left"></i></div>
-                <h3>Abstract</h3>
-            </div>
-            <div class="abstract-text">
-                <p>The development of generalizable Novel View Synthesis (NVS) models is critically limited by the
-                    scarcity of large-scale training data featuring diverse and precise camera trajectories. While
-                    real-world captures are photorealistic, they are typically sparse and discrete. Conversely,
-                    synthetic data scales but suffers from a domain gap and often lacks realistic semantics. We
-                    introduce <strong>FreeScale</strong>, a novel framework that leverages the power of scene
-                    reconstruction to transform limited real-world image sequences into a scalable source of
-                    high-quality training data. Our key insight is that an imperfect reconstructed scene serves as a
-                    rich geometric proxy, but naively sampling from it amplifies artifacts. To this end, we propose a
-                    certainty-aware free-view sampling strategy identifying novel viewpoints that are both semantically
-                    meaningful and minimally affected by reconstruction errors. We demonstrate FreeScale's effectiveness
-                    by scaling up the training of feedforward NVS models, achieving a notable gain of 2.6 dB in PSNR on
-                    challenging out-of-distribution benchmarks. Furthermore, we show that the generated data can
-                    actively enhance per-scene 3D Gaussian Splatting optimization, leading to consistent improvements
-                    across multiple datasets. Our work provides a practical and powerful data generation engine to
-                    overcome a fundamental bottleneck in 3D vision.</p>
-            </div>
-        </section>
-
         <!-- Method highlights -->
         <section class="glass-card" id="method">
             <div class="section-header">
                 <div class="icon-wrapper"><i class="fas fa-cogs"></i></div>
                 <h3>Method: Certainty-Aware View Generation</h3>
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
-                <div style="flex: 1.2;"><img
-                        src="https://placehold.co/600x400/2d2d3a/white?text=Certainty+Grid+%26+View+Graph"
-                        style="width:100%; border-radius: 20px; border: 1px solid var(--glass-border);"></div>
-                <div style="flex: 1;">
-                    <ul style="list-style: none;">
-                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-check-circle"
-                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>Certainty Grid</strong>
-                            – models geometric uncertainty from sparse inputs.</li>
-                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-check-circle"
-                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>View Graph</strong> –
-                            establishes correspondences between generated and real views.</li>
-                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-check-circle"
-                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>Active
-                                Exploration</strong> – selects high-information, low-artifact viewpoints.</li>
-                        <li style="margin-bottom: 0.8rem;"><i class="fas fa-chart-line"
-                                style="color: var(--accent); margin-right: 0.6rem;"></i> <strong>Scaling Effect</strong>
-                            – 1.22× training data expansion, +2.6 dB PSNR gain.</li>
-                    </ul>
+            <div class="method-overview-grid">
+                <figure class="method-figure">
+                    <img class="method-framework-img" src="./images/method-framework.png" alt="FreeScale method overview">
+                    <figcaption>Images are reconstructed as 3D Gaussians, sampled through certainty-aware view generation, rectified, and reused for feed-forward training and per-scene refinement.</figcaption>
+                </figure>
+                <div class="method-copy">
+                    <span class="method-eyebrow"><i class="fas fa-diagram-project"></i> Method Overview</span>
+                    <h4>From sparse images to scalable free-view supervision.</h4>
+                    <p>FreeScale converts limited real-world captures into extra posed observations by using an imperfect reconstruction as a geometry proxy, then sampling only the viewpoints that are likely to be informative and reliable.</p>
+                    <div class="method-flow" aria-label="FreeScale method pipeline">
+                        <span>Sparse images</span>
+                        <i class="fas fa-arrow-right"></i>
+                        <span>3D Gaussians</span>
+                        <i class="fas fa-arrow-right"></i>
+                        <span>Certainty-aware free views</span>
+                        <i class="fas fa-arrow-right"></i>
+                        <span>NVS supervision</span>
+                    </div>
                 </div>
+            </div>
+            <div class="method-step-grid">
+                <article class="method-step">
+                    <div class="method-step-icon"><i class="fas fa-cubes"></i></div>
+                    <h4>Certainty-Aware Free-View Synthesis</h4>
+                    <p><strong>Certainty maps</strong> identify voxels reliable enough to explore. Small, opaque Gaussians indicate well-constrained geometry, so FreeScale accumulates them into a normalized voxel grid.</p>
+                    <div class="method-equation">C(v) = sum alpha / (Vol + epsilon)</div>
+                </article>
+                <article class="method-step">
+                    <div class="method-step-icon"><i class="fas fa-route"></i></div>
+                    <h4>Virtual Viewpoints Placement</h4>
+                    <p>Candidate camera poses are sampled around reliable anchors. Object-centric paths and motion patterns cover lemniscate, orbit, fly-through, and forward/backward exploration, with pose jitter for diversity.</p>
+                </article>
+                <article class="method-step">
+                    <div class="method-step-icon"><i class="fas fa-share-nodes"></i></div>
+                    <h4>Virtual Viewpoints Selection</h4>
+                    <p>The <strong>view graph</strong> connects cameras by shared high-certainty visibility. Certainty-weighted IoU makes selection geometry-aware instead of relying only on frame index or pose distance.</p>
+                    <div class="method-equation">WIoU(i,j) = sum min(W_i,W_j) / sum max(W_i,W_j)</div>
+                </article>
+            </div>
+            <div class="method-detail-stack">
+                <article class="method-detail-card">
+                    <div class="method-detail-grid">
+                        <div class="method-detail-copy">
+                            <div class="method-detail-header">
+                                <div class="method-step-icon"><i class="fas fa-cubes"></i></div>
+                                <div>
+                                    <h4>Certainty-Aware Free-View Synthesis</h4>
+                                </div>
+                            </div>
+                            <h5><strong>Certainty maps</strong> which voxels are reliable enough to explore.</h5>
+                            <p>Small, opaque Gaussians indicate <strong>well-constrained geometry</strong>. FreeScale accumulates them into a normalized voxel grid, so virtual cameras can explore the scene while avoiding regions dominated by reconstruction artifacts.</p>
+                            <div class="method-equation method-equation-block">
+                                C(v_i) = sum_{g_j in G_i} alpha_j / (Vol_j + epsilon), &nbsp;
+                                Vol_j = product_{k=1}^3 exp((s_j)_k)
+                            </div>
+                            <div class="method-visual-tags">
+                                <span><i class="fas fa-circle" style="color:#f72585;"></i> training cameras</span>
+                                <span><i class="fas fa-circle" style="color:#18c998;"></i> free-view cameras</span>
+                                <span><i class="fas fa-circle" style="color:#ffb703;"></i> high-certainty voxels</span>
+                            </div>
+                        </div>
+                        <div class="method-three-card">
+                            <div class="method-scene-label">
+                                <span><i class="fas fa-circle" style="color:#f72585;"></i> training</span>
+                                <span><i class="fas fa-circle" style="color:#18c998;"></i> free views</span>
+                                <span><i class="fas fa-circle" style="color:#ffb703;"></i> certainty</span>
+                            </div>
+                            <canvas class="method-three-canvas" id="methodCertaintyCanvas" aria-label="3D certainty voxels with inward-facing training and virtual cameras"></canvas>
+                        </div>
+                    </div>
+                </article>
+                <article class="method-detail-card">
+                    <div class="method-detail-grid">
+                        <div class="method-detail-copy">
+                            <div class="method-detail-header">
+                                <div class="method-step-icon"><i class="fas fa-route"></i></div>
+                                <div>
+                                    <h4>Virtual Viewpoints Placement</h4>
+                                </div>
+                            </div>
+                            <h5>Candidate camera poses are rendered <strong>directly in 3D</strong>.</h5>
+                            <ul class="method-mini-list">
+                                <li><strong>Anchors</strong> come from training cameras selected by clustering and random choice.</li>
+                                <li><strong>Object-centric modes</strong> look at high-certainty regions.</li>
+                                <li>Motion modes cover <strong>lemniscate, orbit, fly-through</strong>, and forward/backward exploration.</li>
+                                <li>Small pose jitter increases <strong>diversity</strong> beyond deterministic trajectories.</li>
+                            </ul>
+                            <div class="method-mode-chips">
+                                <span>Lemniscate</span>
+                                <span>Orbit</span>
+                                <span>Fly-through</span>
+                                <span>Move forward/backward</span>
+                            </div>
+                        </div>
+                        <div class="method-three-card">
+                            <div class="method-scene-label"><span class="primary" id="methodPlacementLabel">Lemniscate trajectory</span></div>
+                            <canvas class="method-three-canvas" id="methodPlacementCanvas" aria-label="3D virtual camera placement trajectories around certainty voxels"></canvas>
+                            <div class="method-mode-tabs" id="methodPlacementModes">
+                                <button class="method-mode-btn active" type="button" data-mode="lemniscate">Lemniscate</button>
+                                <button class="method-mode-btn" type="button" data-mode="orbit">Orbit</button>
+                                <button class="method-mode-btn" type="button" data-mode="flythrough">Fly-through</button>
+                                <button class="method-mode-btn" type="button" data-mode="move">Move forward/backward</button>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+                <article class="method-detail-card">
+                    <div class="method-detail-grid">
+                        <div class="method-detail-copy">
+                            <div class="method-detail-header">
+                                <div class="method-step-icon"><i class="fas fa-share-nodes"></i></div>
+                                <div>
+                                    <h4>Virtual Viewpoints Selection</h4>
+                                </div>
+                            </div>
+                            <h5>The <strong>view graph</strong> connects cameras by shared high-certainty visibility.</h5>
+                            <div class="method-equation method-equation-block">
+                                W_{i,k} = C(v_k) M_{i,k}, &nbsp;
+                                WIoU(i,j) = sum_k min(W_{i,k}, W_{j,k}) / sum_k max(W_{i,k}, W_{j,k})
+                            </div>
+                            <p>This makes view selection <strong>geometry-aware</strong> instead of relying on frame index or pose distance.</p>
+                            <div class="method-visual-tags">
+                                <span><i class="fas fa-circle" style="color:#f72585;"></i> training node</span>
+                                <span><i class="fas fa-circle" style="color:#4361ee;"></i> candidate node</span>
+                                <span><i class="fas fa-circle" style="color:#18c998;"></i> selected edge</span>
+                            </div>
+                        </div>
+                        <div class="method-three-card">
+                            <div class="method-scene-label">
+                                <span><i class="fas fa-circle" style="color:#f72585;"></i> training</span>
+                                <span><i class="fas fa-circle" style="color:#4361ee;"></i> candidate</span>
+                                <span><i class="fas fa-circle" style="color:#18c998;"></i> selected</span>
+                            </div>
+                            <canvas class="method-three-canvas" id="methodGraphCanvas" aria-label="3D view graph with camera nodes and certainty voxels"></canvas>
+                        </div>
+                    </div>
+                </article>
+            </div>
+            <div class="method-ood">
+                <div class="method-copy">
+                    <span class="method-eyebrow"><i class="fas fa-globe"></i> Out-of-Distribution Results</span>
+                    <h4>FreeScale generalizes to unseen scene types.</h4>
+                    <p>On OOD scenes, generated free-view supervision helps LVSM preserve geometry and recover clearer novel views under challenging camera motion.</p>
+                </div>
+                <figure class="method-figure">
+                    <img class="method-ood-img" src="./images/ff-ood.png" alt="Out-of-distribution comparison between LVSM and FreeScale">
+                </figure>
             </div>
         </section>
 
@@ -936,6 +1024,310 @@
         setMagnifierEnabled(false);
         renderComparison();
         playAllComparisons();
+    </script>
+    <script src="./js/three.min.js"></script>
+    <script>
+        (function () {
+        const THREE = window.THREE;
+        if (!THREE) return;
+
+        const methodCanvases = [
+            document.getElementById('methodCertaintyCanvas'),
+            document.getElementById('methodPlacementCanvas'),
+            document.getElementById('methodGraphCanvas')
+        ].filter(Boolean);
+
+        if (methodCanvases.length) {
+            const scenes = [];
+            const VOXEL_TARGET = new THREE.Vector3(0, 0.45, 0);
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            function makeRenderer(canvas) {
+                const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                renderer.setClearColor(0x000000, 0);
+                return renderer;
+            }
+
+            function setupBaseScene(canvas) {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
+                camera.position.set(4.2, 3.0, 6.4);
+                camera.lookAt(VOXEL_TARGET);
+                const renderer = makeRenderer(canvas);
+                scene.add(new THREE.AmbientLight(0xffffff, 1.65));
+                const light = new THREE.DirectionalLight(0xffffff, 1.2);
+                light.position.set(4, 5, 6);
+                scene.add(light);
+                const grid = new THREE.GridHelper(7, 14, 0x4361ee, 0x9aa4c7);
+                grid.material.transparent = true;
+                grid.material.opacity = 0.28;
+                scene.add(grid);
+                const entry = { canvas, scene, camera, renderer, roots: [], tick: () => {} };
+                installControls(entry);
+                return entry;
+            }
+
+            function installControls(entry) {
+                const target = VOXEL_TARGET.clone();
+                const offset = entry.camera.position.clone().sub(target);
+                const spherical = new THREE.Spherical().setFromVector3(offset);
+                const scratch = new THREE.Vector3();
+                let dragging = false;
+                let lastX = 0;
+                let lastY = 0;
+
+                function updateCamera() {
+                    spherical.radius = THREE.MathUtils.clamp(spherical.radius, 2.2, 10.5);
+                    spherical.phi = THREE.MathUtils.clamp(spherical.phi, 0.28, Math.PI - 0.22);
+                    entry.camera.position.copy(target).add(scratch.setFromSpherical(spherical));
+                    entry.camera.lookAt(target);
+                }
+
+                entry.canvas.addEventListener('pointerdown', (event) => {
+                    dragging = true;
+                    lastX = event.clientX;
+                    lastY = event.clientY;
+                    entry.canvas.classList.add('dragging');
+                    entry.canvas.setPointerCapture(event.pointerId);
+                    event.preventDefault();
+                });
+
+                entry.canvas.addEventListener('pointermove', (event) => {
+                    if (!dragging) return;
+                    const dx = event.clientX - lastX;
+                    const dy = event.clientY - lastY;
+                    lastX = event.clientX;
+                    lastY = event.clientY;
+                    spherical.theta -= dx * 0.006;
+                    spherical.phi -= dy * 0.006;
+                    updateCamera();
+                    event.preventDefault();
+                });
+
+                function stopDrag(event) {
+                    dragging = false;
+                    entry.canvas.classList.remove('dragging');
+                    if (event && entry.canvas.hasPointerCapture(event.pointerId)) entry.canvas.releasePointerCapture(event.pointerId);
+                }
+
+                entry.canvas.addEventListener('pointerup', stopDrag);
+                entry.canvas.addEventListener('pointercancel', stopDrag);
+                entry.canvas.addEventListener('wheel', (event) => {
+                    spherical.radius *= event.deltaY > 0 ? 1.08 : 0.92;
+                    updateCamera();
+                    event.preventDefault();
+                }, { passive: false });
+                updateCamera();
+            }
+
+            function resizeScene(entry) {
+                const rect = entry.canvas.getBoundingClientRect();
+                const width = Math.max(2, Math.floor(rect.width));
+                const height = Math.max(2, Math.floor(rect.height));
+                if (entry.canvas.width !== width || entry.canvas.height !== height) {
+                    entry.renderer.setSize(width, height, false);
+                    entry.camera.aspect = width / height;
+                    entry.camera.updateProjectionMatrix();
+                }
+            }
+
+            function createLine(points, color, opacity = 0.95) {
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+                return new THREE.Line(geometry, material);
+            }
+
+            function createFrustum(color = 0x4361ee, scale = 0.48) {
+                const group = new THREE.Group();
+                const far = scale;
+                const w = scale * 0.62;
+                const h = scale * 0.42;
+                const origin = new THREE.Vector3(0, 0, 0);
+                const corners = [
+                    new THREE.Vector3(-w, h, far),
+                    new THREE.Vector3(w, h, far),
+                    new THREE.Vector3(w, -h, far),
+                    new THREE.Vector3(-w, -h, far)
+                ];
+                const linePoints = [];
+                for (let i = 0; i < 4; i++) {
+                    linePoints.push(origin, corners[i], corners[i], corners[(i + 1) % 4]);
+                }
+                linePoints.push(origin, new THREE.Vector3(0, 0, far * 1.22));
+                group.add(new THREE.LineSegments(
+                    new THREE.BufferGeometry().setFromPoints(linePoints),
+                    new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.92 })
+                ));
+                const plane = new THREE.Mesh(
+                    new THREE.PlaneGeometry(w * 2, h * 2),
+                    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false })
+                );
+                plane.position.z = far;
+                group.add(plane);
+                group.add(new THREE.Mesh(new THREE.SphereGeometry(scale * 0.075, 18, 12), new THREE.MeshBasicMaterial({ color })));
+                return group;
+            }
+
+            function lookAt(group, target = VOXEL_TARGET) {
+                group.up.set(0, 1, 0);
+                group.lookAt(target.x, target.y, target.z);
+                return group;
+            }
+
+            function addVoxelGrid(scene) {
+                const root = new THREE.Group();
+                const boxGeo = new THREE.BoxGeometry(0.42, 0.42, 0.42);
+                const edgeGeo = new THREE.EdgesGeometry(boxGeo);
+                const edgeMat = new THREE.LineBasicMaterial({ color: 0x6c757d, transparent: true, opacity: 0.34 });
+                const hotMat = new THREE.MeshBasicMaterial({ color: 0xffb703, transparent: true, opacity: 0.36 });
+                const coolMat = new THREE.MeshBasicMaterial({ color: 0x4895ef, transparent: true, opacity: 0.07 });
+                for (let x = -2; x <= 2; x++) {
+                    for (let y = -1; y <= 1; y++) {
+                        for (let z = -2; z <= 2; z++) {
+                            const hot = Math.abs(x) + Math.abs(z) + Math.abs(y) < 3 && (x + z + y) % 2 === 0;
+                            const cube = new THREE.Mesh(boxGeo, hot ? hotMat : coolMat);
+                            cube.position.set(x * 0.44, y * 0.44 + 0.42, z * 0.44);
+                            root.add(cube);
+                            const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+                            edges.position.copy(cube.position);
+                            root.add(edges);
+                        }
+                    }
+                }
+                scene.add(root);
+                return root;
+            }
+
+            function samplePath(mode) {
+                const points = [];
+                const n = 26;
+                for (let i = 0; i < n; i++) {
+                    const t = (i / (n - 1)) * Math.PI * 2;
+                    if (mode === 'lemniscate') points.push(new THREE.Vector3(Math.sin(t) * 2.2, 0.7 + 0.35 * Math.sin(t * 2), Math.sin(t) * Math.cos(t) * 2.1));
+                    if (mode === 'orbit') points.push(new THREE.Vector3(Math.cos(t) * 2.5, 0.8 + 0.2 * Math.sin(t * 2), Math.sin(t) * 2.5));
+                    if (mode === 'flythrough') points.push(new THREE.Vector3(-2.7 + (5.4 * i) / (n - 1), 0.65 + Math.sin(t) * 0.35, 1.7 - (3.4 * i) / (n - 1)));
+                    if (mode === 'move') points.push(new THREE.Vector3(Math.sin(t) * 0.45, 0.75 + Math.cos(t) * 0.18, -2.8 + (5.6 * i) / (n - 1)));
+                }
+                return points;
+            }
+
+            function createTrajectory(mode) {
+                const group = new THREE.Group();
+                const path = samplePath(mode);
+                group.add(createLine(path, 0x4361ee, 0.92));
+                path.filter((_, i) => i % 4 === 0 || i === path.length - 1).forEach((point, i) => {
+                    const frustum = createFrustum(0x18c998, 0.34);
+                    frustum.position.copy(point);
+                    lookAt(frustum);
+                    group.add(frustum);
+                    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), new THREE.MeshBasicMaterial({ color: i === 0 ? 0xf72585 : 0x4361ee }));
+                    dot.position.copy(point);
+                    group.add(dot);
+                });
+                return group;
+            }
+
+            function initCertaintyScene() {
+                const canvas = document.getElementById('methodCertaintyCanvas');
+                if (!canvas) return;
+                const entry = setupBaseScene(canvas);
+                const voxels = addVoxelGrid(entry.scene);
+                const trainPositions = [new THREE.Vector3(-2.8, 1.0, 1.8), new THREE.Vector3(2.6, 0.85, 1.7), new THREE.Vector3(-1.7, 1.15, -2.5)];
+                const freePositions = [new THREE.Vector3(2.7, 1.2, -2.1), new THREE.Vector3(0.2, 1.8, 3.0), new THREE.Vector3(-2.8, 0.9, -0.7)];
+                trainPositions.forEach((p) => { const f = createFrustum(0xf72585, 0.42); f.position.copy(p); lookAt(f); entry.scene.add(f); entry.roots.push(f); });
+                freePositions.forEach((p) => { const f = createFrustum(0x18c998, 0.42); f.position.copy(p); lookAt(f); entry.scene.add(f); entry.roots.push(f); });
+                entry.tick = (time) => {
+                    voxels.rotation.y = time * 0.00018;
+                    entry.roots.forEach((root, i) => { root.position.y += Math.sin(time * 0.001 + i) * 0.0009; });
+                };
+                scenes.push(entry);
+            }
+
+            let placementEntry;
+            let activeTrajectory;
+            function setPlacementMode(mode) {
+                if (!placementEntry) return;
+                if (activeTrajectory) placementEntry.scene.remove(activeTrajectory);
+                activeTrajectory = createTrajectory(mode);
+                placementEntry.scene.add(activeTrajectory);
+                const labels = {
+                    lemniscate: 'Lemniscate trajectory',
+                    orbit: 'Orbit trajectory',
+                    flythrough: 'Fly-through trajectory',
+                    move: 'Move forward/backward'
+                };
+                const label = document.getElementById('methodPlacementLabel');
+                if (label) label.textContent = labels[mode];
+                document.querySelectorAll('#methodPlacementModes .method-mode-btn').forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
+            }
+
+            function initPlacementScene() {
+                const canvas = document.getElementById('methodPlacementCanvas');
+                if (!canvas) return;
+                placementEntry = setupBaseScene(canvas);
+                addVoxelGrid(placementEntry.scene);
+                const anchor = createFrustum(0xf72585, 0.46);
+                anchor.position.set(-2.3, 1.1, 2.2);
+                lookAt(anchor);
+                placementEntry.scene.add(anchor);
+                placementEntry.tick = (time) => {
+                    if (activeTrajectory) activeTrajectory.rotation.y = Math.sin(time * 0.00035) * 0.16;
+                };
+                setPlacementMode('lemniscate');
+                document.getElementById('methodPlacementModes')?.addEventListener('click', (event) => {
+                    const button = event.target.closest('[data-mode]');
+                    if (button) setPlacementMode(button.dataset.mode);
+                });
+                scenes.push(placementEntry);
+            }
+
+            function initGraphScene() {
+                const canvas = document.getElementById('methodGraphCanvas');
+                if (!canvas) return;
+                const entry = setupBaseScene(canvas);
+                addVoxelGrid(entry.scene);
+                const root = new THREE.Group();
+                const nodes = [
+                    { p: new THREE.Vector3(-2.2, 0.95, 1.8), c: 0xf72585, train: true },
+                    { p: new THREE.Vector3(2.3, 0.9, 1.6), c: 0xf72585, train: true },
+                    { p: new THREE.Vector3(-1.6, 1.2, -2.1), c: 0x4361ee },
+                    { p: new THREE.Vector3(1.7, 1.35, -2.2), c: 0x4361ee },
+                    { p: new THREE.Vector3(0.0, 1.85, 2.7), c: 0x18c998 },
+                    { p: new THREE.Vector3(0.35, 0.95, -2.75), c: 0xffb703 }
+                ];
+                const edges = [[0, 4, 0x18c998], [1, 4, 0x18c998], [2, 5, 0x9aa4c7], [3, 5, 0x9aa4c7], [0, 2, 0x9aa4c7], [1, 3, 0x9aa4c7], [4, 5, 0x18c998]];
+                edges.forEach(([a, b, color]) => root.add(createLine([nodes[a].p, nodes[b].p], color, color === 0x18c998 ? 0.95 : 0.36)));
+                nodes.forEach((node) => {
+                    const sphere = new THREE.Mesh(new THREE.SphereGeometry(node.train ? 0.13 : 0.15, 24, 16), new THREE.MeshBasicMaterial({ color: node.c }));
+                    sphere.position.copy(node.p);
+                    root.add(sphere);
+                    const frustum = createFrustum(node.c, 0.28);
+                    frustum.position.copy(node.p.clone().add(new THREE.Vector3(0, 0.08, 0)));
+                    lookAt(frustum);
+                    root.add(frustum);
+                });
+                entry.scene.add(root);
+                entry.tick = (time) => { root.rotation.y = time * 0.00016; };
+                scenes.push(entry);
+            }
+
+            function animate(time) {
+                for (const entry of scenes) {
+                    resizeScene(entry);
+                    if (!prefersReducedMotion) entry.tick(time);
+                    entry.renderer.render(entry.scene, entry.camera);
+                }
+                requestAnimationFrame(animate);
+            }
+
+            initCertaintyScene();
+            initPlacementScene();
+            initGraphScene();
+            window.addEventListener('resize', () => scenes.forEach(resizeScene));
+            requestAnimationFrame(animate);
+        }
+        })();
     </script>
 </body>
 
